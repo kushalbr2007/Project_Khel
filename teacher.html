@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Khel Teacher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&display=swap">
+<style>
+:root{--ink:#3b2418;--cream:#fff6e3;--saffron:#ff9f1c;--teal:#1fa3a3;--rose:#e8467c;--green:#3fae5b;--gold:#ffc83d;--card:#fffaf0;--font:"Andika","Comic Sans MS","Chalkboard SE","Trebuchet MS",system-ui,sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0;background:#fff6e3;font-family:var(--font);color:var(--ink)}
+button{font-family:inherit;cursor:pointer}
+.t-in{font-family:inherit;font-size:20px;font-weight:800;width:110px;text-align:center;text-transform:uppercase;border:3px solid var(--ink);border-radius:12px;padding:4px}
+#teacher{max-width:1100px;margin:0 auto;padding:16px;font-family:var(--font)}
+#teacher h1{margin:0;font-size:28px}#teacher h2{margin:14px 0 6px;font-size:20px}
+.t-head{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;background:#fff;border:3px solid var(--ink);border-radius:18px;padding:10px 16px}
+.t-code{font-size:32px;font-weight:900;letter-spacing:6px;background:var(--gold);border:3px solid var(--ink);border-radius:12px;padding:0 12px}
+.t-goal{margin-top:12px;background:#fff;border:3px solid var(--ink);border-radius:18px;padding:10px 16px}
+.t-bar{height:22px;border:3px solid var(--ink);border-radius:14px;overflow:hidden;background:#eee;margin-top:6px}
+.t-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--saffron),var(--gold));transition:width .5s}
+.t-cols{display:grid;grid-template-columns:minmax(260px,1fr) 2fr;gap:14px}
+@media (max-width:760px){.t-cols{grid-template-columns:1fr}}
+.t-card{background:#fff;border:3px solid var(--ink);border-radius:16px;padding:10px 12px;margin-bottom:10px}
+.t-req{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap}
+.t-req audio{height:38px;max-width:260px}.t-note{font-size:13px;font-weight:700;opacity:.8}
+.t-req .w{font-size:40px;font-weight:900;min-width:60px}
+.t-req .who{font-weight:800}
+.t-btn{font-family:inherit;font-weight:800;font-size:18px;border:3px solid var(--ink);border-radius:14px;padding:8px 16px;color:#fff;cursor:pointer}
+.t-btn.ok{background:var(--green)}.t-btn.no{background:var(--rose)}.t-btn.n{background:var(--teal)}
+.t-pl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;align-items:center}
+.t-pl input{font-family:inherit;font-size:16px;font-weight:700;border:2px solid var(--ink);border-radius:10px;padding:4px 8px;width:100%}
+.t-id{background:var(--gold);border:2px solid var(--ink);border-radius:10px;padding:2px 8px;font-weight:900;letter-spacing:2px}
+.t-stats{grid-column:1/3;font-size:14px;display:flex;gap:10px;flex-wrap:wrap}
+.t-stats span{background:#ffeccc;border-radius:10px;padding:2px 8px;font-weight:700}
+.t-off{opacity:.5}
+table.t-tb{width:100%;border-collapse:collapse;background:#fff}
+.t-tb th,.t-tb td{border:2px solid var(--ink);padding:5px 8px;text-align:center;font-weight:700}
+.t-tb th{background:var(--gold)}
+</style><script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+</head><body>
+<div id="teacher">
+ <div class="t-head"><h1>Khel · Teacher</h1>
+  <span>Class code <span class="t-code" id="t-code">----</span> <button class="t-btn no" id="t-newcode" style="font-size:13px;padding:3px 10px">New code</button></span>
+  <label>Child ID <input class="t-in" id="t-id" maxlength="4" placeholder="J453" autocomplete="off"></label>
+  <button class="t-btn n" id="t-link">🔗 Link child</button><span id="t-msg" style="font-weight:700"></span></div>
+ <p style="margin:6px 4px;font-size:14px">1. Tell the children the class code above; they type it on their start screen. 2. Ask each child for the 4-character ID on their screen, enter it below and press Link. Their say-it questions then appear here.</p>
+ <div class="t-head"><span>Session <select id="t-min"><option value="5">5 min</option><option value="10" selected>10 min</option><option value="15">15 min</option><option value="20">20 min</option><option value="30">30 min</option><option value="0">No limit</option></select></span>
+  <button class="t-btn n" id="t-start">▶ Start session</button><button class="t-btn no" id="t-end">■ End now</button><span id="t-timer" style="font-weight:800"></span></div>
+ <div class="t-goal"><b>Class goal</b> <span id="t-goaltxt"></span><div class="t-bar"><i id="t-goalfill"></i></div></div>
+ <div class="t-cols"><div><h2>🎤 Say-it queue</h2><div id="t-queue"><p>No one is waiting.</p></div></div><div><h2>Linked children</h2><div id="t-players"><p>No children linked yet.</p></div></div></div>
+ <div id="t-sum"></div>
+ <p style="font-size:13px;opacity:.7">Children connect with the class code above. On one device, the two pages talk through the browser. For separate devices, run the classroom server (khel-server.js).</p>
+</div>
+
+<script>
+(()=>{
+'use strict';
+/* ================= CONFIG (tune in testing) ================= */
+const CONFIG={
+  wrongTotal:5, wrongInRow:3, streakToLevelUp:5, retryMin:3, retryMax:5, speakChance:.35, speakOfflineAfter:7,
+  baseSpeed:240, speedPerStreak:15, goalPerChild:30, questionChance:.55
+};
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const rnd=(a,b)=>a+Math.random()*(b-a), ri=n=>Math.floor(Math.random()*n), pick=a=>a[ri(a.length)];
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=ri(i+1);[a[i],a[j]]=[a[j],a[i]]}return a};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ALPHA='abcdefghijklmnopqrstuvwxyz'.split(''), VOW='aeiou'.split(''), CONS=ALPHA.filter(c=>!VOW.includes(c));
+
+const uid=()=>{const c='ABCDEFGHJKMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<4;i++)s+=c[ri(c.length)];return s};
+/* ================= Net: BroadcastChannel (same device) + WebSocket relay (separate devices) =================
+   Messages are small JSON {t,from,to,code,...}. Only messages with the same class code are accepted. */
+const Net={code:'',id:uid(),ch:null,ws:null,seen:new Set(),h:{},
+  init(){try{this.ch=new BroadcastChannel('khel-v2');this.ch.onmessage=e=>this._in(e.data)}catch(e){}
+    this.connect();
+    addEventListener('storage',e=>{if(e.key==='khel-msg'&&e.newValue){try{this._in(JSON.parse(e.newValue))}catch(_){}}})},
+  connect(){if(!window.KHEL_RELAY)return;const url=(location.protocol==='https:'?'wss://':'ws://')+location.host+'/relay';
+    const open=()=>{try{const w=new WebSocket(url);this.ws=w;w.onmessage=e=>{try{this._in(JSON.parse(e.data))}catch(_){}};w.onclose=()=>{this.ws=null;setTimeout(open,1500)};w.onerror=()=>{try{w.close()}catch(_){}}}catch(e){setTimeout(open,3000)}};open()},
+  send(m){m.mid=Math.random().toString(36).slice(2);m.from=this.id;m.code=this.code;this.seen.add(m.mid);
+    try{this.ch&&this.ch.postMessage(m)}catch(e){}
+    try{this.ws&&this.ws.readyState===1&&this.ws.send(JSON.stringify(m))}catch(e){}
+    this._p2p(m);
+    try{localStorage.setItem('khel-msg',JSON.stringify(m));localStorage.removeItem('khel-msg')}catch(e){}},
+  /* serverless link between devices: WebRTC (PeerJS) - the teacher page is the hub, children connect with the class code.
+     Only the handshake touches the free PeerJS cloud; messages and voice recordings go straight device to device. */
+  isTeacher:!!document.getElementById('t-code'),pc:{},pcode:'',peer:null,conn:null,conns:{},
+  _p2pStart(){const code=this.code;if(!window.Peer)return;
+    if(this.peer){try{this.peer.destroy()}catch(e){}this.peer=null;this.conn=null;this.conns={}}
+    this.pcode=code;if(!code)return;const opt=window.KHEL_PEER||{};const pid='khelv1-'+code;
+    const hook=c=>{c.on('data',d=>{try{this._in(typeof d==='string'?JSON.parse(d):d)}catch(e){}});};
+    try{
+      if(this.isTeacher){const p=new Peer(pid,opt);this.peer=p;
+        p.on('connection',c=>{hook(c);c.on('open',()=>{const sid=c.metadata&&c.metadata.sid;if(sid)this.conns[sid]=c});c.on('close',()=>{for(const k in this.conns)if(this.conns[k]===c)delete this.conns[k]})});
+        p.on('error',e=>{if(e&&e.type==='unavailable-id'){this.pcode='';setTimeout(()=>{this.pcode=''},0)}});}
+      else{const p=new Peer(opt);this.peer=p;
+        const dial=()=>{if(this.peer!==p||p.destroyed)return;const c=p.connect(pid,{metadata:{sid:this.id},reliable:true});hook(c);
+          c.on('open',()=>{this.conn=c});const lost=()=>{if(this.conn===c)this.conn=null;setTimeout(dial,2500)};c.on('close',lost);c.on('error',lost);
+          setTimeout(()=>{if(!c.open){try{c.close()}catch(e){}if(this.conn!==c&&this.peer===p&&!p.destroyed){/* retry handled by close */}}},8000)};
+        p.on('open',dial);p.on('error',e=>{if(e&&e.type==='peer-unavailable')setTimeout(dial,2500)});
+        p.on('disconnected',()=>{try{p.reconnect()}catch(e){}})}
+    }catch(e){}},
+  _p2p(m){try{const s=JSON.stringify(m);
+    if(this.isTeacher){if(m.to){const c=this.conns[m.to];c&&c.open&&c.send(s)}else for(const k in this.conns){const c=this.conns[k];c.open&&c.send(s)}}
+    else if(this.conn&&this.conn.open)this.conn.send(s)}catch(e){}},
+  on(t,f){this.h[t]=f},
+  _in(m){if(!m||!m.mid||this.seen.has(m.mid))return;this.seen.add(m.mid);if(m.from===this.id||!this.code||m.code!==this.code)return;if(m.to&&m.to!==this.id)return;const f=this.h[m.t];f&&f(m)}};
+Net.init();setInterval(()=>{if(Net.pcode!==Net.code)Net._p2pStart()},800);
+
+/* ================= Teacher companion view (#teacher) ================= */
+const Teacher={players:{},queue:[],judged:new Set(),pendingAudio:{},qsig:'',endsAt:0,running:false,
+  init(){
+    Net.id='teacher';this.setCode();
+    Net.on('linked',m=>{const p=this.players[m.from];if(p){const first=!p.linked;p.linked=true;p.seen=Date.now();if(first&&this.running)Net.send({t:'session',to:m.from,endsAt:this.endsAt});this.render()}});
+    Net.on('status',m=>{if(this.players[m.from])this.upd(m.from,m)});
+    Net.on('bye',m=>{const p=this.players[m.from];if(p){p.linked=false;this.render()}});
+    Net.on('ask',m=>{if(!this.players[m.from]||this.judged.has(m.qid))return;this.upd(m.from,{linked:true});
+      let it=this.queue.find(q=>q.qid===m.qid);
+      if(!it){it={qid:m.qid,from:m.from,text:m.text,note:m.note,diff:m.diff,rec:m.rec!==false,audio:this.pendingAudio[m.qid]||null};delete this.pendingAudio[m.qid];this.queue.push(it);this.render()}
+      else if(it.rec!==(m.rec!==false)){it.rec=m.rec!==false;this.render()}});
+    Net.on('audio',m=>{if(!this.players[m.from]||this.judged.has(m.qid))return;const it=this.queue.find(q=>q.qid===m.qid);
+      if(it){if(!it.audio||it.audio.aid!==m.aid){it.audio={aid:m.aid,mime:m.mime,data:m.data};it.fresh=true;this.render()}}
+      else this.pendingAudio[m.qid]={aid:m.aid,mime:m.mime,data:m.data}});
+    $('#t-newcode').onclick=()=>this.newCode();$('#t-link').onclick=()=>this.link();$('#t-id').onkeydown=e=>{if(e.key==='Enter')this.link()};
+    setInterval(()=>{for(const id in this.players)Net.send({t:'link',to:id});this.tick()},2500);
+    $('#t-start').onclick=()=>{const mn=+$('#t-min').value;this.endsAt=mn?Date.now()+mn*60000:0;this.running=true;$('#t-sum').innerHTML='';for(const id in this.players)Net.send({t:'session',to:id,endsAt:this.endsAt});this.tick()};
+    $('#t-end').onclick=()=>{for(const id in this.players)Net.send({t:'end',to:id});this.running=false;this.endsAt=0;this.tick();this.summary()};
+    this.render()},
+  setCode(code){
+    if(!code){const q=new URLSearchParams(location.search).get('code');code=/^\d{4}$/.test(q||'')?q:'';
+      if(!code){try{code=localStorage.getItem('khel-code')||''}catch(e){}}
+      if(!/^\d{4}$/.test(code))code=String(1000+ri(9000))}
+    try{localStorage.setItem('khel-code',code)}catch(e){}
+    Net.code=code;$('#t-code').textContent=code},
+  newCode(){for(const id in this.players)Net.send({t:'unlink',to:id});this.players={};this.queue=[];this.qsig='';this.setCode(String(1000+ri(9000)));this.render()},
+  link(){const inp=$('#t-id'),id=inp.value.trim().toUpperCase(),msg=$('#t-msg');
+    if(!/^[A-Z0-9]{4}$/.test(id)){msg.textContent='Enter the 4-character ID from the child’s screen.';return}
+    if(this.players[id]){msg.textContent=id+' is already linked.';return}
+    this.players[id]={id,name:'',linked:false,seen:0,correct:0,wrong:0,stars:0,best:0,letters:0,diff:1,streak:0,wrongTotal:0,miss:0,coins:0,cov:0};
+    Net.send({t:'link',to:id});inp.value='';msg.textContent='Linking '+id+'…';this.render()},
+  unlink(id){Net.send({t:'unlink',to:id});delete this.players[id];this.queue=this.queue.filter(q=>q.from!==id);this.render()},
+  upd(id,m){const p=this.players[id];if(!p)return;for(const k of ['diff','streak','wrongTotal','miss','correct','wrong','stars','best','letters','coins','cov'])if(m[k]!=null)p[k]=m[k];p.seen=Date.now();this.render()},
+  tick(){const e=$('#t-timer');if(this.endsAt){const l=Math.max(0,this.endsAt-Date.now());e.textContent=`⏱ ${Math.floor(l/60000)}:${String(Math.floor(l/1000)%60).padStart(2,'0')}`;if(l<=0&&this.running){this.running=false;this.summary()}}else e.textContent=this.running?'Running (no limit)':'';
+    this.render()},
+  verdict(q,ok){this.judged.add(q.qid);const send=()=>Net.send({t:'verdict',qid:q.qid,to:q.from,ok});send();setTimeout(send,1200);setTimeout(send,3500);this.queue=this.queue.filter(x=>x!==q);this.render()},
+  summary(){const ps=Object.values(this.players);if(!ps.length)return;$('#t-sum').innerHTML='<h2>Session summary</h2><table class="t-tb"><tr><th>Child ID</th><th>Name</th><th>Correct</th><th>To practise</th><th>Stars ⭐</th><th>Best streak</th><th>Letters</th><th>Difficulty</th></tr>'+ps.map(p=>`<tr><td>${esc(p.id)}</td><td>${esc(p.name)}</td><td>${p.correct}</td><td>${p.wrong}</td><td>${p.stars}</td><td>${p.best}</td><td>${p.letters}/26</td><td>${p.diff}</td></tr>`).join('')+'</table>'},
+  render(){
+    const ps=Object.values(this.players);
+    const sig=this.queue.map(x=>x.qid+(x.audio?x.audio.aid:'-')+x.rec).join('|')+Object.keys(this.players).map(id=>(this.players[id].name||'')).join('');
+    const q=$('#t-queue');if(sig!==this.qsig){this.qsig=sig;q.innerHTML=this.queue.length?'':'<p>No one is waiting.</p>';
+    this.queue.forEach(it=>{const p=this.players[it.from]||{name:''};const d=document.createElement('div');d.className='t-card t-req';
+      d.innerHTML=`<span class="w">${esc(it.text)}</span><span class="who"><span class="t-id">${esc(it.from)}</span> ${esc(p.name||'')}<br><small>${esc(it.note||'')}</small></span>`;
+      const ok=document.createElement('button');ok.className='t-btn ok';ok.textContent='✓ Correct';ok.onclick=()=>this.verdict(it,true);
+      const no=document.createElement('button');no.className='t-btn no';no.textContent='✗ Wrong';no.onclick=()=>this.verdict(it,false);const rc=document.createElement('div');rc.style.cssText='flex-basis:100%';
+      if(it.audio){const au=document.createElement('audio');au.controls=true;au.src=it.audio.data;au.preload='auto';rc.appendChild(au);
+        if(it.fresh){it.fresh=false;au.play().catch(()=>{})}}                       // plays automatically when it arrives
+      else rc.innerHTML=it.rec?'<span class="t-note">⏳ Waiting for the child to record…</span>':'<span class="t-note">🔇 No recording on this device. Listen in person.</span>';
+      d.append(rc,ok,no);q.appendChild(d)});}
+    const typing=document.activeElement&&document.activeElement.classList.contains('t-name');
+    if(!typing){const pl=$('#t-players');pl.innerHTML=ps.length?'':'<p>No children linked yet.</p>';
+      ps.forEach(p=>{const on=p.linked&&Date.now()-p.seen<8000;const d=document.createElement('div');d.className='t-card t-pl'+(on?'':' t-off');
+        d.innerHTML=`<span class="t-id">${esc(p.id)}</span>`;const inp=document.createElement('input');inp.className='t-name';inp.placeholder='Name label (optional)';inp.value=p.name||'';inp.oninput=()=>{p.name=inp.value};d.appendChild(inp);
+        const st=document.createElement('div');st.className='t-stats';st.innerHTML=`<span>${on?'🟢 online':p.linked?'⚪ offline':'⏳ waiting for child…'}</span><span>Diff ${p.diff} · ${p.diff===1?'Uppercase':'Lowercase'}</span><span>🔥 ${p.streak}/5</span><span>Wrong ${p.wrongTotal}/5</span><span>In a row ${p.miss}/3</span><span>✅ ${p.correct}</span><span>🔄 ${p.wrong}</span><span>⭐ ${p.stars}</span><span>Covered ${p.cov}/26</span>`;d.appendChild(st);
+        const un=document.createElement('button');un.className='t-btn no';un.style.cssText='grid-column:1/3;font-size:13px;padding:3px 10px;justify-self:start';un.textContent='Unlink';un.onclick=()=>this.unlink(p.id);d.appendChild(un);pl.appendChild(d)})}
+    const tot=ps.reduce((s,p)=>s+(p.correct||0),0),goal=Math.max(1,ps.length)*CONFIG.goalPerChild;
+    $('#t-goaltxt').textContent=`${tot} right answers together · goal ${goal}`;$('#t-goalfill').style.width=clamp(tot/goal*100,0,100)+'%'}
+};
+Teacher.init();
+
+
+})();
+</script></body></html>
