@@ -118,7 +118,6 @@ body.touch #touch.on{display:none}
 #touch button{pointer-events:auto;width:min(26vmin,140px);height:min(26vmin,140px);border-radius:50%;border:5px solid var(--ink);color:#fff;font-weight:900;font-size:min(4.4vmin,22px);box-shadow:0 6px 0 var(--ink);opacity:.88;display:flex;flex-direction:column;align-items:center;justify-content:center;touch-action:none}
 #touch button svg{width:45%;height:45%}
 #touch button.down{transform:translateY(5px);box-shadow:0 1px 0 var(--ink);opacity:1}
-#bCrawl{background:var(--rose)}#bJump{background:var(--teal)}
 </style><script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head><body>
 <div id="app">
@@ -159,7 +158,6 @@ body.touch #touch.on{display:none}
    <div class="panel" id="p-summary"><h2>⏰ Time's up!</h2><div id="su-txt"></div><div class="row"><button class="btn" id="su-menu">Done</button></div></div>
   </div>
  </div>
-<div id="touch"><button id="bCrawl" aria-label="Crawl"><svg viewBox="0 0 24 24" fill="#fff"><path d="M12 20 3 8h18z"/></svg>CRAWL</button><button id="bJump" aria-label="Jump"><svg viewBox="0 0 24 24" fill="#fff"><path d="M12 4l9 12H3z"/></svg>JUMP</button></div>
 </div>
 
 <script>
@@ -484,7 +482,7 @@ if(touchDev)document.body.classList.add('touch');
 
 function openPanel(id){if(id!=='p-menu')$('#h-tip').classList.remove('on');$$('.panel').forEach(p=>p.classList.toggle('show',p.id===id));}
 function closePanel(){$$('.panel').forEach(p=>p.classList.remove('show'));}
-function hudOn(on){$('#hud').classList.toggle('on',on);$('#touch').classList.toggle('on',on&&mode==='play')}
+function hudOn(on){$('#hud').classList.toggle('on',on)}
 function tip(txt,ms=4500){const e=$('#h-tip');e.textContent=txt;e.classList.add('on');clearTimeout(tip.t);tip.t=setTimeout(()=>e.classList.remove('on'),ms)}
 function countdown(n,done){const e=$('#cd');let k=n;const step=()=>{if(k===0){e.classList.remove('on');done();return}e.textContent=k;e.classList.remove('on');void e.offsetWidth;e.classList.add('on');Snd.tone(440+ (n-k)*110,.15,'triangle',.14);k--;setTimeout(step,850)};step()}
 function goldStar(){const e=$('#star');e.classList.remove('on');void e.offsetWidth;e.classList.add('on')}
@@ -563,19 +561,16 @@ addEventListener('keydown',e=>{
   else if(e.code==='KeyP'||e.code==='Escape')pauseGame();
   Snd.init()});
 addEventListener('keyup',e=>{if(e.code==='ArrowDown'||e.code==='KeyS')crawlUp()});
-function bindBtn(id,down,up){const b=$(id);b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);b.classList.add('down');Snd.init();down()});
-  const u=e=>{b.classList.remove('down');up&&up()};b.addEventListener('pointerup',u);b.addEventListener('pointercancel',u)}
-bindBtn('#bJump',jumpPress);bindBtn('#bCrawl',crawlDown,crawlUp);
 /* touch-screen motion: swipe up (or tap) = jump, swipe down = crawl (hold the finger down to keep crawling) */
 (()=>{const st=$('#stage');let g=null;
-  const ok=t=>!t.closest('button,input,.panel,#qcard,#hud,a');
-  st.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'||!ok(e.target)||mode!=='play'||!R||R.state!=='run')return;Snd.init();g={id:e.pointerId,x:e.clientX,y:e.clientY,t:Date.now(),done:0}});
-  st.addEventListener('pointermove',e=>{if(!g||e.pointerId!==g.id||g.done)return;
-    const rot=document.body.classList.contains('rot');const dy=rot?-(e.clientX-g.x):(e.clientY-g.y);
-    if(dy<-26){g.done=1;jumpPress()}else if(dy>26){g.done=2;crawlDown()}});
+  const ok=t=>!t.closest('button,input,.panel,#qcard,a');
+  const down=e=>{if(e.pointerType==='mouse'||!ok(e.target)||mode!=='play'||!R||R.state!=='run')return;Snd.init();g={id:e.pointerId,x:e.clientX,y:e.clientY,t:Date.now(),done:0};try{st.setPointerCapture(e.pointerId)}catch(_){}};
+  const move=e=>{if(!g||e.pointerId!==g.id||g.done)return;
+    const rot=document.body.classList.contains('rot');const dy=rot?(e.clientX-g.x):(e.clientY-g.y);
+    if(dy<-20){g.done=1;jumpPress()}else if(dy>20){g.done=2;crawlDown()}};
   const end=e=>{if(!g||e.pointerId!==g.id)return;if(g.done===2)crawlUp();else if(!g.done&&e.type==='pointerup'&&Date.now()-g.t<350)jumpPress();g=null};
+  st.addEventListener('pointerdown',down);st.addEventListener('pointermove',move);
   st.addEventListener('pointerup',end);st.addEventListener('pointercancel',end)})();
-
 
 /* ================= Run logic ================= */
 /* Item pool: which letters were already asked in each difficulty, plus the spaced-retry queue for missed letters */
@@ -730,7 +725,7 @@ function startSpeak(g){
   R.speak={g,id,t:0,offline:false};
   $('#sp-word').textContent=g.q.display;$('#sp-st').textContent=isLinked()?'Waiting for your teacher…':'Waiting for your teacher to link ID '+S.id;$('#sp-self').style.display='none';$('#speak').classList.add('on');
   Rec.state='idle';Rec.last=null;recUI();
-  speakQ(g.q);Net.send({t:'ask',qid:id,text:g.q.display,note:g.q.text,diff:S.diff,rec:Rec.ok});
+  try{speechSynthesis.cancel()}catch(e){}Net.send({t:'ask',qid:id,text:g.q.display,note:g.q.text,diff:S.diff,rec:Rec.ok});
 }
 function finishSpeak(ok,practice){
   if(!R||!R.speak)return;                                   // works even if the tab lost focus or a panel opened meanwhile
