@@ -113,6 +113,23 @@ input.code{font-family:inherit;font-size:max(16px,calc(var(--u)*20));font-weight
 #mini-hud,#mini-hud *{pointer-events:auto}
 /* touch buttons */
 #stage{touch-action:none}
+
+body.port #p-menu{width:96%;padding:calc(var(--u)*10) calc(var(--u)*14) calc(var(--u)*14)}
+body.port #h-left{left:calc(var(--u)*8);top:calc(var(--u)*8)}
+body.port #h-right{right:calc(var(--u)*8);top:calc(var(--u)*8);gap:calc(var(--u)*5)}
+body.port .ib{width:calc(var(--u)*40);height:calc(var(--u)*40);font-size:calc(var(--u)*18)}
+body.port .seg{width:calc(var(--u)*24)}
+body.port #h-id{font-size:calc(var(--u)*14)}
+body.port #h-right .pill{font-size:calc(var(--u)*17);padding:calc(var(--u)*3) calc(var(--u)*9)}
+body.port #h-prompt{top:calc(var(--u)*116);min-width:0;width:calc(100% - var(--u)*24);max-width:none}
+body.port #h-tip{top:calc(var(--u)*176);white-space:normal;width:calc(100% - var(--u)*40);text-align:center;font-size:calc(var(--u)*16)}
+body.port #qcard{max-width:96%}
+body.port #qc-text{font-size:calc(var(--u)*22)}
+body.port .qopt{min-width:calc(var(--u)*92);height:calc(var(--u)*88)}
+body.port #wd-wrap{flex-direction:column;align-items:center}
+body.port #lb-grid{grid-template-columns:repeat(7,1fr)}
+body.port #lb-grid div{width:calc(var(--u)*56);height:calc(var(--u)*56)}
+body.port .panel{font-size:calc(var(--u)*17)}
 </style><script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head><body>
 <div id="app">
@@ -271,17 +288,14 @@ const S={id:Net.id,char:'boy',coins:0,diff:1,d1done:false,levelDone:false,
 
 /* ================= Canvas + art ================= */
 const cv=$('#cv'),ctx=cv.getContext('2d'),stage=$('#stage');
-const W=960,H=540,GY=430,Q=1.5;
-let SC=1;
+let W=960,H=540,GY=430;const Q=1.5;
+let SC=1;var PORT=false,bgReady=false;
 function fit(){
-  let vw=innerWidth,vh=innerHeight;const app=document.getElementById('app');
-  // phone held upright: turn the whole game a quarter turn so it fills the screen
-  const up=vw<600&&vh>vw*1.15&&touchDevice();
-  document.body.classList.toggle('rot',up);
-  if(up){[vw,vh]=[vh,vw];app.style.cssText='inset:auto;left:0;top:0;width:'+vw+'px;height:'+vh+'px;transform-origin:0 0;transform:translateX('+vh+'px) rotate(90deg)'}
-  else app.style.cssText='';
-  const w=Math.min(vw,vh*16/9),h=w*9/16;
-  stage.style.width=w+'px';stage.style.height=h+'px';stage.style.setProperty('--u',(w/960)+'px');
+  const vw=innerWidth,vh=innerHeight;
+  const port=vh>vw*1.05;
+  if(port!==PORT){PORT=port;W=port?540:960;H=port?960:540;GY=port?660:430;document.body.classList.toggle('port',port);if(bgReady)buildBG(BG.th)}
+  let w,h;if(PORT){w=Math.min(vw,vh*9/16);h=w*16/9}else{w=Math.min(vw,vh*16/9);h=w*9/16}
+  stage.style.width=w+'px';stage.style.height=h+'px';stage.style.setProperty('--u',(w/W)+'px');
   const d=Math.min(devicePixelRatio||1,2);cv.width=Math.round(w*d);cv.height=Math.round(h*d);SC=cv.width/W}
 function touchDevice(){return('ontouchstart' in window)||navigator.maxTouchPoints>0}
 addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,150));fit();
@@ -326,7 +340,7 @@ function buildBG(th){
   BG.th=th;const R=rng(th.name.length*77);
   const mk=(tw)=>{const k=document.createElement('canvas');k.width=tw*Q;k.height=H*Q;const c=k.getContext('2d');c.scale(Q,Q);return[k,c]};
   let [fk,fc]=mk(1600);
-  for(let x=0;x<1600;x+=130+R()*70){const w=70+R()*90,h=90+R()*120;
+  for(let x=0;x<1600;x+=130+R()*70){const w=70+R()*90,h=(90+R()*120)*(PORT?2.2:1);
     for(const ox of [0,-1600]){const xx=x+ox;if(xx+w<0||xx>1600)continue;
       fc.fillStyle=th.far;rr(fc,xx,GY-60-h,w,h+60,5);fc.fill();
       if(R()<.5){fc.beginPath();fc.arc(xx+w/2,GY-60-h,w*.3,Math.PI,0);fc.fill()}
@@ -334,7 +348,7 @@ function buildBG(th){
   fc.fillStyle=th.far;fc.fillRect(0,GY-70,1600,70);
   let [mk2,mc]=mk(1280);
   let x=10;while(x<1280){
-    if(R()<.72){const w=120+R()*120,h=120+R()*100;
+    if(R()<.72){const w=120+R()*120,h=(120+R()*100)*(PORT?1.9:1);
       for(const ox of [0,-1280]){const xx=x+ox;if(xx+w<-20||xx>1290)continue;bld(mc,xx,GY-8,w,h,R()<.5?th.b1:th.b2,th.trim,{dome:R()<.35,chh:R()<.4})}
       x+=w+20+R()*30}
     else{for(const ox of [0,-1280])tree(mc,x+ox+30,GY-6,1+R()*.35,th.tree);x+=90+R()*50}}
@@ -343,8 +357,8 @@ function drawTile(k,off){const tw=k.width/Q;let x=-(((off%tw)+tw)%tw);for(;x<W;x
 const clouds=Array.from({length:6},(_,i)=>({x:i*190,y:40+(i%3)*50,s:.7+(i%4)*.2}));
 function drawBG(th,sc,t,ground=true){
   const g=ctx.createLinearGradient(0,0,0,GY);g.addColorStop(0,th.sky[0]);g.addColorStop(1,th.sky[1]);ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-  ctx.fillStyle='rgba(255,240,170,.9)';ctx.beginPath();ctx.arc(790,95,44,0,6.3);ctx.fill();
-  ctx.fillStyle='rgba(255,255,255,.8)';for(const c of clouds){const x=((c.x-t*8)%1100+1100)%1100-100;ctx.beginPath();ctx.ellipse(x,c.y,46*c.s,17*c.s,0,0,6.3);ctx.ellipse(x+28*c.s,c.y-9*c.s,30*c.s,16*c.s,0,0,6.3);ctx.fill()}
+  ctx.fillStyle='rgba(255,240,170,.9)';ctx.beginPath();ctx.arc(W*.82,95+(PORT?110:0),44,0,6.3);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.8)';for(const c of clouds){const M=W+140,x=((c.x-t*8)%M+M)%M-100,cy=c.y+(PORT?120:0);ctx.beginPath();ctx.ellipse(x,cy,46*c.s,17*c.s,0,0,6.3);ctx.ellipse(x+28*c.s,cy-9*c.s,30*c.s,16*c.s,0,0,6.3);ctx.fill()}
   drawTile(BG.far,sc*.15);drawTile(BG.mid,sc*.45);
   if(!ground)return;
   ctx.fillStyle=th.lawn;ctx.fillRect(0,GY-18,W,22);
@@ -563,7 +577,7 @@ addEventListener('keyup',e=>{if(e.code==='ArrowDown'||e.code==='KeyS')crawlUp()}
   const down=e=>{if(e.pointerType==='mouse'||!ok(e.target)||mode!=='play'||!R||R.state!=='run')return;Snd.init();
     g={id:e.pointerId,x:e.clientX,y:e.clientY,crawl:false};try{st.setPointerCapture(e.pointerId)}catch(_){}jumpPress()};
   const move=e=>{if(!g||e.pointerId!==g.id||g.crawl)return;
-    const rot=document.body.classList.contains('rot');const dy=rot?(e.clientX-g.x):(e.clientY-g.y);
+    const dy=e.clientY-g.y;
     if(dy>14){g.crawl=true;crawlDown()}};
   const end=e=>{if(!g||e.pointerId!==g.id)return;if(g.crawl)crawlUp();g=null};
   st.addEventListener('pointerdown',down);st.addEventListener('pointermove',move);
@@ -602,7 +616,7 @@ function newRun(){
   const th=THEMES[S.diff-1];buildBG(th);resetPoolAttempt();
   R={th,state:'run',wrongRow:0,streak:0,objs:[],decos:[],spawnX:W+260,v:0,qCount:0,qRun:0,plainRun:0,card:null,
      correct:0,wrong:0,pendingLU:0,speak:null,prev:'run',decoT:0,failReason:''};
-  Object.assign(P,{lift:0,vy:0,crawlT:0,held:false,jumpBuf:0,stumble:0,crawling:false});
+  Object.assign(P,{x:PORT?120:210,lift:0,vy:0,crawlT:0,held:false,jumpBuf:0,stumble:0,crawling:false});
   setPrompt(null);refreshHUD();sendStatus();
 }
 function spawnNext(){
@@ -622,7 +636,7 @@ function updateRun(dt){
   P.t+=dt;
   if(!R)return;
   if(R.state==='run'){
-    const tgt=CONFIG.baseSpeed+Math.min(R.streak,5)*CONFIG.speedPerStreak;
+    const tgt=(CONFIG.baseSpeed+Math.min(R.streak,5)*CONFIG.speedPerStreak)*(PORT?.8:1);
     R.v+=((P.stumble>0?tgt*.45:tgt)-R.v)*Math.min(1,dt*4);
     const dx=R.v*dt;scroll+=dx;
     for(const o of R.objs)o.x-=dx;for(const d of R.decos)d.x-=dx;R.spawnX-=dx;
@@ -798,7 +812,7 @@ function drawRun(){
   if(P.lift>1){ctx.fillStyle='rgba(0,0,0,.18)';ctx.beginPath();ctx.ellipse(P.x+4,GY+2,22*(1-P.lift/300),5,0,0,6.3);ctx.fill()}
 }
 function drawMenuBG(){if(!BG.far)buildBG(THEMES[0]);drawBG(BG.th,T*60,T)}
-buildBG(THEMES[0]);renderMenu();openPanel('p-menu');requestAnimationFrame(frame);
+buildBG(THEMES[0]);bgReady=true;renderMenu();openPanel('p-menu');requestAnimationFrame(frame);
 window.__khel={S,Pool,Rec,answerCard,openCard,get R(){return R},P,CONFIG,Net,get mode(){return mode},beginRun,finishSpeak,doLevelUp,isLinked,nextQuestion};
 
 
