@@ -112,12 +112,24 @@ input.code{font-family:inherit;font-size:max(16px,calc(var(--u)*20));font-weight
 #mini-hud button{pointer-events:auto}
 #mini-hud,#mini-hud *{pointer-events:auto}
 /* touch buttons */
-#touch{position:absolute;left:0;right:0;bottom:0;display:none;justify-content:space-between;padding:0 14px calc(14px + env(safe-area-inset-bottom));pointer-events:none;z-index:5}
-body.touch #touch.on{display:flex}
-#touch button{pointer-events:auto;width:min(26vmin,140px);height:min(26vmin,140px);border-radius:50%;border:5px solid var(--ink);color:#fff;font-weight:900;font-size:min(4.4vmin,22px);box-shadow:0 6px 0 var(--ink);opacity:.88;display:flex;flex-direction:column;align-items:center;justify-content:center;touch-action:none}
-#touch button svg{width:45%;height:45%}
-#touch button.down{transform:translateY(5px);box-shadow:0 1px 0 var(--ink);opacity:1}
-#bCrawl{background:var(--rose)}#bJump{background:var(--teal)}
+#stage{touch-action:none}
+
+body.port #p-menu{width:96%;padding:calc(var(--u)*10) calc(var(--u)*14) calc(var(--u)*14)}
+body.port #h-left{left:calc(var(--u)*8);top:calc(var(--u)*8)}
+body.port #h-right{right:calc(var(--u)*8);top:calc(var(--u)*8);gap:calc(var(--u)*5)}
+body.port .ib{width:calc(var(--u)*40);height:calc(var(--u)*40);font-size:calc(var(--u)*18)}
+body.port .seg{width:calc(var(--u)*24)}
+body.port #h-id{font-size:calc(var(--u)*14)}
+body.port #h-right .pill{font-size:calc(var(--u)*17);padding:calc(var(--u)*3) calc(var(--u)*9)}
+body.port #h-prompt{top:calc(var(--u)*116);min-width:0;width:calc(100% - var(--u)*24);max-width:none}
+body.port #h-tip{top:calc(var(--u)*176);white-space:normal;width:calc(100% - var(--u)*40);text-align:center;font-size:calc(var(--u)*16)}
+body.port #qcard{max-width:96%}
+body.port #qc-text{font-size:calc(var(--u)*22)}
+body.port .qopt{min-width:calc(var(--u)*92);height:calc(var(--u)*88)}
+body.port #wd-wrap{flex-direction:column;align-items:center}
+body.port #lb-grid{grid-template-columns:repeat(7,1fr)}
+body.port #lb-grid div{width:calc(var(--u)*56);height:calc(var(--u)*56)}
+body.port .panel{font-size:calc(var(--u)*17)}
 </style><script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head><body>
 <div id="app">
@@ -158,7 +170,6 @@ body.touch #touch.on{display:flex}
    <div class="panel" id="p-summary"><h2>⏰ Time's up!</h2><div id="su-txt"></div><div class="row"><button class="btn" id="su-menu">Done</button></div></div>
   </div>
  </div>
-<div id="touch"><button id="bCrawl" aria-label="Crawl"><svg viewBox="0 0 24 24" fill="#fff"><path d="M12 20 3 8h18z"/></svg>CRAWL</button><button id="bJump" aria-label="Jump"><svg viewBox="0 0 24 24" fill="#fff"><path d="M12 4l9 12H3z"/></svg>JUMP</button></div>
 </div>
 
 <script>
@@ -237,12 +248,16 @@ const Music={timer:null,step:0,on:false,tempo:()=>96+(window.__streak||0)*10,
   MEL:[0,2,4,2,5,4,2,0,1,3,5,3,4,2,1,-1],SC:[261.6,293.7,329.6,392,440,523.3],
   start(){if(this.on)return;this.on=true;const tick=()=>{if(!this.on)return;if(!Snd.muted&&Snd.ctx){const i=this.MEL[this.step%16];if(i>=0)Snd.tone(this.SC[i],.22,'triangle',.035);if(this.step%4===0)Snd.tone(this.SC[0]/2,.3,'sine',.05)}this.step++;this.timer=setTimeout(tick,30000/this.tempo())};tick()},
   stop(){this.on=false;clearTimeout(this.timer)}};
-const Say={voice:null,pick(){const vs=speechSynthesis.getVoices();this.voice=vs.find(v=>/en[-_]IN/i.test(v.lang))||vs.find(v=>/en[-_]GB/i.test(v.lang))||vs.find(v=>/^en/i.test(v.lang))||null},
+const Say={voice:null,pick(){const vs=speechSynthesis.getVoices().filter(v=>/^en/i.test(v.lang));
+    const sc=v=>(/natural|neural|premium|enhanced|online/i.test(v.name)?60:0)+(/google/i.test(v.name)?35:0)+(/samantha|karen|daniel|moira|rishi|veena|aria|jenny|libby|ryan/i.test(v.name)?25:0)+(/en[-_]IN/i.test(v.lang)?12:/en[-_]GB/i.test(v.lang)?10:/en[-_]US/i.test(v.lang)?8:0)+(v.localService?0:3)-(/espeak|compact|novelty|bad|zarvox|whisper/i.test(v.name)?80:0);
+    this.voice=vs.sort((a,b)=>sc(b)-sc(a))[0]||null},
   init(){if(!('speechSynthesis'in window))return;this.pick();speechSynthesis.onvoiceschanged=()=>this.pick()},
-  say(t,rate=.8){if(!('speechSynthesis'in window)||Snd.muted||!t)return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.rate=rate;u.pitch=1.1;if(this.voice){u.voice=this.voice;u.lang=this.voice.lang}speechSynthesis.speak(u)}catch(e){}}};
+  say(t,rate=.72){if(!('speechSynthesis'in window)||Snd.muted||!t)return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.rate=rate;u.pitch=1.05;if(this.voice){u.voice=this.voice;u.lang=this.voice.lang}speechSynthesis.speak(u)}catch(e){}}};
 
 /* ================= Learning content: Level 1 ================= */
 const NAME={a:'ay',b:'bee',c:'see',d:'dee',e:'ee',f:'eff',g:'jee',h:'aitch',i:'eye',j:'jay',k:'kay',l:'el',m:'em',n:'en',o:'oh',p:'pee',q:'cue',r:'ar',s:'ess',t:'tee',u:'you',v:'vee',w:'double you',x:'ex',y:'why',z:'zed'};
+/* spoken forms: real English words that every phone voice pronounces correctly (the on-screen text keeps NAME) */
+const SAYW={a:'ay',b:'bee',c:'sea',d:'dee',e:'ee',f:'eff',g:'gee',h:'aitch',i:'eye',j:'jay',k:'kay',l:'ell',m:'em',n:'en',o:'oh',p:'pea',q:'queue',r:'are',s:'ess',t:'tea',u:'you',v:'vee',w:'double you',x:'ex',y:'why',z:'zed'};
 const STAGES=[null,'Letter Names · Uppercase','Letter Names · Lowercase'];
 function buildOptions(correct,n,fmt){
   const wrong=shuffle(ALPHA.filter(x=>x!==correct)).slice(0,n-1);
@@ -252,9 +267,9 @@ function buildOptions(correct,n,fmt){
 /* kind 'A' = hear the letter, choose it.  kind 'B' = see the letter, say it (teacher judges) */
 function makeQ(diff,L,kind){
   const f=diff===1?c=>c.toUpperCase():c=>c;
-  if(kind==='B')return{kind:'B',letter:L,display:f(L),say:NAME[L],text:'Say the name of this letter',options:[]};
+  if(kind==='B')return{kind:'B',letter:L,display:f(L),say:SAYW[L],text:'Say the name of this letter',options:[]};
   const n=diff===1?(Math.random()<.25?3:2):(Math.random()<.8?3:2);
-  return{kind:'A',letter:L,say:NAME[L],text:`Which ${diff===1?'capital':'small'} letter is “${NAME[L]}”?`,options:buildOptions(L,n,f)};
+  return{kind:'A',letter:L,say:SAYW[L],text:`Which ${diff===1?'capital':'small'} letter is “${NAME[L]}”?`,options:buildOptions(L,n,f)};
 }
 
 /* ================= Cosmetics ================= */
@@ -273,17 +288,14 @@ const S={id:Net.id,char:'boy',coins:0,diff:1,d1done:false,levelDone:false,
 
 /* ================= Canvas + art ================= */
 const cv=$('#cv'),ctx=cv.getContext('2d'),stage=$('#stage');
-const W=960,H=540,GY=430,Q=1.5;
-let SC=1;
+let W=960,H=540,GY=430;const Q=1.5;
+let SC=1;var PORT=false,bgReady=false;
 function fit(){
-  let vw=innerWidth,vh=innerHeight;const app=document.getElementById('app');
-  // phone held upright: turn the whole game a quarter turn so it fills the screen
-  const up=vw<600&&vh>vw*1.15&&touchDevice();
-  document.body.classList.toggle('rot',up);
-  if(up){[vw,vh]=[vh,vw];app.style.cssText='inset:auto;left:0;top:0;width:'+vw+'px;height:'+vh+'px;transform-origin:0 0;transform:translateX('+vh+'px) rotate(90deg)'}
-  else app.style.cssText='';
-  const w=Math.min(vw,vh*16/9),h=w*9/16;
-  stage.style.width=w+'px';stage.style.height=h+'px';stage.style.setProperty('--u',(w/960)+'px');
+  const vw=innerWidth,vh=innerHeight;
+  const port=vh>vw*1.05;
+  if(port!==PORT){PORT=port;W=port?540:960;H=port?960:540;GY=port?660:430;document.body.classList.toggle('port',port);if(bgReady)buildBG(BG.th)}
+  let w,h;if(PORT){w=Math.min(vw,vh*9/16);h=w*16/9}else{w=Math.min(vw,vh*16/9);h=w*9/16}
+  stage.style.width=w+'px';stage.style.height=h+'px';stage.style.setProperty('--u',(w/W)+'px');
   const d=Math.min(devicePixelRatio||1,2);cv.width=Math.round(w*d);cv.height=Math.round(h*d);SC=cv.width/W}
 function touchDevice(){return('ontouchstart' in window)||navigator.maxTouchPoints>0}
 addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,150));fit();
@@ -328,7 +340,7 @@ function buildBG(th){
   BG.th=th;const R=rng(th.name.length*77);
   const mk=(tw)=>{const k=document.createElement('canvas');k.width=tw*Q;k.height=H*Q;const c=k.getContext('2d');c.scale(Q,Q);return[k,c]};
   let [fk,fc]=mk(1600);
-  for(let x=0;x<1600;x+=130+R()*70){const w=70+R()*90,h=90+R()*120;
+  for(let x=0;x<1600;x+=130+R()*70){const w=70+R()*90,h=(90+R()*120)*(PORT?2.2:1);
     for(const ox of [0,-1600]){const xx=x+ox;if(xx+w<0||xx>1600)continue;
       fc.fillStyle=th.far;rr(fc,xx,GY-60-h,w,h+60,5);fc.fill();
       if(R()<.5){fc.beginPath();fc.arc(xx+w/2,GY-60-h,w*.3,Math.PI,0);fc.fill()}
@@ -336,7 +348,7 @@ function buildBG(th){
   fc.fillStyle=th.far;fc.fillRect(0,GY-70,1600,70);
   let [mk2,mc]=mk(1280);
   let x=10;while(x<1280){
-    if(R()<.72){const w=120+R()*120,h=120+R()*100;
+    if(R()<.72){const w=120+R()*120,h=(120+R()*100)*(PORT?1.9:1);
       for(const ox of [0,-1280]){const xx=x+ox;if(xx+w<-20||xx>1290)continue;bld(mc,xx,GY-8,w,h,R()<.5?th.b1:th.b2,th.trim,{dome:R()<.35,chh:R()<.4})}
       x+=w+20+R()*30}
     else{for(const ox of [0,-1280])tree(mc,x+ox+30,GY-6,1+R()*.35,th.tree);x+=90+R()*50}}
@@ -345,8 +357,8 @@ function drawTile(k,off){const tw=k.width/Q;let x=-(((off%tw)+tw)%tw);for(;x<W;x
 const clouds=Array.from({length:6},(_,i)=>({x:i*190,y:40+(i%3)*50,s:.7+(i%4)*.2}));
 function drawBG(th,sc,t,ground=true){
   const g=ctx.createLinearGradient(0,0,0,GY);g.addColorStop(0,th.sky[0]);g.addColorStop(1,th.sky[1]);ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-  ctx.fillStyle='rgba(255,240,170,.9)';ctx.beginPath();ctx.arc(790,95,44,0,6.3);ctx.fill();
-  ctx.fillStyle='rgba(255,255,255,.8)';for(const c of clouds){const x=((c.x-t*8)%1100+1100)%1100-100;ctx.beginPath();ctx.ellipse(x,c.y,46*c.s,17*c.s,0,0,6.3);ctx.ellipse(x+28*c.s,c.y-9*c.s,30*c.s,16*c.s,0,0,6.3);ctx.fill()}
+  ctx.fillStyle='rgba(255,240,170,.9)';ctx.beginPath();ctx.arc(W*.82,95+(PORT?110:0),44,0,6.3);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.8)';for(const c of clouds){const M=W+140,x=((c.x-t*8)%M+M)%M-100,cy=c.y+(PORT?120:0);ctx.beginPath();ctx.ellipse(x,cy,46*c.s,17*c.s,0,0,6.3);ctx.ellipse(x+28*c.s,cy-9*c.s,30*c.s,16*c.s,0,0,6.3);ctx.fill()}
   drawTile(BG.far,sc*.15);drawTile(BG.mid,sc*.45);
   if(!ground)return;
   ctx.fillStyle=th.lawn;ctx.fillRect(0,GY-18,W,22);
@@ -474,13 +486,12 @@ let R=null;               // current run
 const P={x:210,lift:0,vy:0,crawlT:0,held:false,jumpBuf:0,stumble:0,t:0,crawling:false};
 let T=0,scroll=0,shake=0,teacherSeen=0,endsAt=0,ended=false,linked=false;
 const isLinked=()=>linked&&Date.now()-teacherSeen<9000;
-const touchDev=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+const touchDev=('ontouchstart' in window)||navigator.maxTouchPoints>0||matchMedia('(pointer:coarse)').matches||Math.min(screen.width,screen.height)<700;
 if(touchDev)document.body.classList.add('touch');
-if(!matchMedia('(pointer:coarse)').matches&&!touchDev)$('#touch').classList.remove('on');
 
 function openPanel(id){if(id!=='p-menu')$('#h-tip').classList.remove('on');$$('.panel').forEach(p=>p.classList.toggle('show',p.id===id));}
 function closePanel(){$$('.panel').forEach(p=>p.classList.remove('show'));}
-function hudOn(on){$('#hud').classList.toggle('on',on);$('#touch').classList.toggle('on',on&&mode==='play')}
+function hudOn(on){$('#hud').classList.toggle('on',on)}
 function tip(txt,ms=4500){const e=$('#h-tip');e.textContent=txt;e.classList.add('on');clearTimeout(tip.t);tip.t=setTimeout(()=>e.classList.remove('on'),ms)}
 function countdown(n,done){const e=$('#cd');let k=n;const step=()=>{if(k===0){e.classList.remove('on');done();return}e.textContent=k;e.classList.remove('on');void e.offsetWidth;e.classList.add('on');Snd.tone(440+ (n-k)*110,.15,'triangle',.14);k--;setTimeout(step,850)};step()}
 function goldStar(){const e=$('#star');e.classList.remove('on');void e.offsetWidth;e.classList.add('on')}
@@ -510,8 +521,8 @@ function refreshHUD(){
   const cb=st>=4?3:st>=2?2:1,cE=$('#h-combo');cE.style.display=cb>1?'flex':'none';cE.textContent='×'+cb;
   $('#h-stage').textContent=`Level 1 · Difficulty ${S.diff}: ${STAGES[S.diff]}`;
 }
-function setPrompt(q){$('#pbig').textContent='';$('#ptxt').innerHTML='Jump ⬆ hurdles · Crawl ⬇ bars'}
-function speakQ(q){if(q)Say.say(q.say)}
+function setPrompt(q){$('#pbig').textContent='';$('#ptxt').innerHTML=touchDev?'Tap to jump · Swipe ⬇ to crawl':'Jump ⬆ hurdles · Crawl ⬇ bars'}
+function speakQ(q){if(q&&q.kind!=='B')Say.say(q.say)}
 $('#b-replay').onclick=()=>{Snd.init();if(R&&R.card)speakQ(R.card.o.q)};
 $('#h-snd').onclick=()=>{Snd.muted=!Snd.muted;$('#h-snd').textContent=Snd.muted?'🔇':'🔊';if(Snd.muted)try{speechSynthesis.cancel()}catch(e){}};
 $('#h-pause').onclick=()=>pauseGame();
@@ -559,10 +570,18 @@ addEventListener('keydown',e=>{
   else if(e.code==='KeyP'||e.code==='Escape')pauseGame();
   Snd.init()});
 addEventListener('keyup',e=>{if(e.code==='ArrowDown'||e.code==='KeyS')crawlUp()});
-function bindBtn(id,down,up){const b=$(id);b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);b.classList.add('down');Snd.init();down()});
-  const u=e=>{b.classList.remove('down');up&&up()};b.addEventListener('pointerup',u);b.addEventListener('pointercancel',u)}
-bindBtn('#bJump',jumpPress);bindBtn('#bCrawl',crawlDown,crawlUp);
-
+/* touch-screen motion: swipe up (or tap) = jump, swipe down = crawl (hold the finger down to keep crawling) */
+(()=>{const st=$('#stage');let g=null;
+  /* dino-style: touch the screen = jump, touch and drag/hold down = crawl */
+  const ok=t=>!t.closest('button,input,.panel,#qcard,a');
+  const down=e=>{if(e.pointerType==='mouse'||!ok(e.target)||mode!=='play'||!R||R.state!=='run')return;Snd.init();
+    g={id:e.pointerId,x:e.clientX,y:e.clientY,crawl:false};try{st.setPointerCapture(e.pointerId)}catch(_){}jumpPress()};
+  const move=e=>{if(!g||e.pointerId!==g.id||g.crawl)return;
+    const dy=e.clientY-g.y;
+    if(dy>14){g.crawl=true;crawlDown()}};
+  const end=e=>{if(!g||e.pointerId!==g.id)return;if(g.crawl)crawlUp();g=null};
+  st.addEventListener('pointerdown',down);st.addEventListener('pointermove',move);
+  st.addEventListener('pointerup',end);st.addEventListener('pointercancel',end)})();
 
 /* ================= Run logic ================= */
 /* Item pool: which letters were already asked in each difficulty, plus the spaced-retry queue for missed letters */
@@ -597,7 +616,7 @@ function newRun(){
   const th=THEMES[S.diff-1];buildBG(th);resetPoolAttempt();
   R={th,state:'run',wrongRow:0,streak:0,objs:[],decos:[],spawnX:W+260,v:0,qCount:0,qRun:0,plainRun:0,card:null,
      correct:0,wrong:0,pendingLU:0,speak:null,prev:'run',decoT:0,failReason:''};
-  Object.assign(P,{lift:0,vy:0,crawlT:0,held:false,jumpBuf:0,stumble:0,crawling:false});
+  Object.assign(P,{x:PORT?120:210,lift:0,vy:0,crawlT:0,held:false,jumpBuf:0,stumble:0,crawling:false});
   setPrompt(null);refreshHUD();sendStatus();
 }
 function spawnNext(){
@@ -617,7 +636,7 @@ function updateRun(dt){
   P.t+=dt;
   if(!R)return;
   if(R.state==='run'){
-    const tgt=CONFIG.baseSpeed+Math.min(R.streak,5)*CONFIG.speedPerStreak;
+    const tgt=(CONFIG.baseSpeed+Math.min(R.streak,5)*CONFIG.speedPerStreak)*(PORT?.8:1);
     R.v+=((P.stumble>0?tgt*.45:tgt)-R.v)*Math.min(1,dt*4);
     const dx=R.v*dt;scroll+=dx;
     for(const o of R.objs)o.x-=dx;for(const d of R.decos)d.x-=dx;R.spawnX-=dx;
@@ -665,7 +684,7 @@ function onWrong(q,x,y){
   R.streak=0;R.wrong++;R.wrongRow++;S.stats.wrong++;Snd.wrong();shake=.3;
   floatText(x,y-30,'Not quite!','#ffffff',32);
   queueRetry(q);                                                           // asked again after 3-5 other items
-  if(q.kind==='A')setTimeout(()=>Say.say(`It is ${NAME[q.letter]}.`),350);
+  if(q.kind==='A')setTimeout(()=>Say.say(`It is ${SAYW[q.letter]}.`),350);
   refreshHUD();sendStatus();
   if(R.wrong>=CONFIG.wrongTotal||R.wrongRow>=CONFIG.wrongInRow){R.state='failing';R.pendingLU=0;setTimeout(gameOver,900)}
 }
@@ -717,14 +736,14 @@ function startSpeak(g){
   R.speak={g,id,t:0,offline:false};
   $('#sp-word').textContent=g.q.display;$('#sp-st').textContent=isLinked()?'Waiting for your teacher…':'Waiting for your teacher to link ID '+S.id;$('#sp-self').style.display='none';$('#speak').classList.add('on');
   Rec.state='idle';Rec.last=null;recUI();
-  speakQ(g.q);Net.send({t:'ask',qid:id,text:g.q.display,note:g.q.text,diff:S.diff,rec:Rec.ok});
+  try{speechSynthesis.cancel()}catch(e){}Net.send({t:'ask',qid:id,text:g.q.display,note:g.q.text,diff:S.diff,rec:Rec.ok});
 }
 function finishSpeak(ok,practice){
   if(!R||!R.speak)return;                                   // works even if the tab lost focus or a panel opened meanwhile
   const g=R.speak.g;R.speak=null;R.card=null;Rec.release();$('#speak').classList.remove('on');closePanel();
   g.state=ok?'cleared':'failed';R.state='run';const x=P.x+70,y=GY-150;
   if(ok){g.cleared=true;g.armed=true;if(!practice){S.stats.stars++;goldStar();Snd.fanfare()}onCorrect(g.q,x,y)}
-  else{S.stats.speakNo++;Say.say(`Good try! Listen again. ${g.q.say}.`);onWrong(g.q,x,y)}
+  else{S.stats.speakNo++;onWrong(g.q,x,y)}
 }
 $('#sp-ok').onclick=()=>finishSpeak(true,true);
 Net.on('verdict',m=>{if(R&&R.speak&&m.qid===R.speak.id)finishSpeak(!!m.ok,false)});
@@ -755,7 +774,7 @@ $('#ov-retry').onclick=()=>{S.diff=1;closePanel();beginRun()};
 $('#ov-menu').onclick=()=>toMenu();
 
 function beginRun(){closePanel();mode='play';newRun();hudOn(true);$('#h-prompt').style.opacity=1;scroll=0;
-  tip(touchDev?'Tap JUMP at a ❓ hurdle, CRAWL at a ❓ bar to open a question!':'Space = jump · ↓ = crawl · press at a ❓ obstacle to open a question!',7000);
+  tip(touchDev?'Tap the screen to jump · swipe down to crawl · do it at a ❓ obstacle to open a question!':'Space = jump · ↓ = crawl · press at a ❓ obstacle to open a question!',7000);
   R.state='cd';countdown(3,()=>{R.state='run'});Music.start()}
 function toMenu(){closePanel();$('#qcard').classList.remove('on');mode='menu';R=null;hudOn(false);$('#speak').classList.remove('on');setPrompt(null);refreshHUD();renderMenu();openPanel('p-menu')}
 $('#b-play').onclick=()=>{Snd.init();Say.init();
@@ -793,7 +812,7 @@ function drawRun(){
   if(P.lift>1){ctx.fillStyle='rgba(0,0,0,.18)';ctx.beginPath();ctx.ellipse(P.x+4,GY+2,22*(1-P.lift/300),5,0,0,6.3);ctx.fill()}
 }
 function drawMenuBG(){if(!BG.far)buildBG(THEMES[0]);drawBG(BG.th,T*60,T)}
-buildBG(THEMES[0]);renderMenu();openPanel('p-menu');requestAnimationFrame(frame);
+buildBG(THEMES[0]);bgReady=true;renderMenu();openPanel('p-menu');requestAnimationFrame(frame);
 window.__khel={S,Pool,Rec,answerCard,openCard,get R(){return R},P,CONFIG,Net,get mode(){return mode},beginRun,finishSpeak,doLevelUp,isLinked,nextQuestion};
 
 
