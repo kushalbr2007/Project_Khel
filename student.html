@@ -112,12 +112,7 @@ input.code{font-family:inherit;font-size:max(16px,calc(var(--u)*20));font-weight
 #mini-hud button{pointer-events:auto}
 #mini-hud,#mini-hud *{pointer-events:auto}
 /* touch buttons */
-#touch{display:none!important;position:absolute;left:0;right:0;bottom:0;display:none;justify-content:space-between;padding:0 14px calc(14px + env(safe-area-inset-bottom));pointer-events:none;z-index:5}
-body.touch #touch.on{display:none}
 #stage{touch-action:none}
-#touch button{pointer-events:auto;width:min(26vmin,140px);height:min(26vmin,140px);border-radius:50%;border:5px solid var(--ink);color:#fff;font-weight:900;font-size:min(4.4vmin,22px);box-shadow:0 6px 0 var(--ink);opacity:.88;display:flex;flex-direction:column;align-items:center;justify-content:center;touch-action:none}
-#touch button svg{width:45%;height:45%}
-#touch button.down{transform:translateY(5px);box-shadow:0 1px 0 var(--ink);opacity:1}
 </style><script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head><body>
 <div id="app">
@@ -512,7 +507,7 @@ function refreshHUD(){
   const cb=st>=4?3:st>=2?2:1,cE=$('#h-combo');cE.style.display=cb>1?'flex':'none';cE.textContent='×'+cb;
   $('#h-stage').textContent=`Level 1 · Difficulty ${S.diff}: ${STAGES[S.diff]}`;
 }
-function setPrompt(q){$('#pbig').textContent='';$('#ptxt').innerHTML=touchDev?'Swipe ⬆ to jump · Swipe ⬇ to crawl':'Jump ⬆ hurdles · Crawl ⬇ bars'}
+function setPrompt(q){$('#pbig').textContent='';$('#ptxt').innerHTML=touchDev?'Tap to jump · Swipe ⬇ to crawl':'Jump ⬆ hurdles · Crawl ⬇ bars'}
 function speakQ(q){if(q&&q.kind!=='B')Say.say(q.say)}
 $('#b-replay').onclick=()=>{Snd.init();if(R&&R.card)speakQ(R.card.o.q)};
 $('#h-snd').onclick=()=>{Snd.muted=!Snd.muted;$('#h-snd').textContent=Snd.muted?'🔇':'🔊';if(Snd.muted)try{speechSynthesis.cancel()}catch(e){}};
@@ -563,12 +558,14 @@ addEventListener('keydown',e=>{
 addEventListener('keyup',e=>{if(e.code==='ArrowDown'||e.code==='KeyS')crawlUp()});
 /* touch-screen motion: swipe up (or tap) = jump, swipe down = crawl (hold the finger down to keep crawling) */
 (()=>{const st=$('#stage');let g=null;
+  /* dino-style: touch the screen = jump, touch and drag/hold down = crawl */
   const ok=t=>!t.closest('button,input,.panel,#qcard,a');
-  const down=e=>{if(e.pointerType==='mouse'||!ok(e.target)||mode!=='play'||!R||R.state!=='run')return;Snd.init();g={id:e.pointerId,x:e.clientX,y:e.clientY,t:Date.now(),done:0};try{st.setPointerCapture(e.pointerId)}catch(_){}};
-  const move=e=>{if(!g||e.pointerId!==g.id||g.done)return;
+  const down=e=>{if(e.pointerType==='mouse'||!ok(e.target)||mode!=='play'||!R||R.state!=='run')return;Snd.init();
+    g={id:e.pointerId,x:e.clientX,y:e.clientY,crawl:false};try{st.setPointerCapture(e.pointerId)}catch(_){}jumpPress()};
+  const move=e=>{if(!g||e.pointerId!==g.id||g.crawl)return;
     const rot=document.body.classList.contains('rot');const dy=rot?(e.clientX-g.x):(e.clientY-g.y);
-    if(dy<-20){g.done=1;jumpPress()}else if(dy>20){g.done=2;crawlDown()}};
-  const end=e=>{if(!g||e.pointerId!==g.id)return;if(g.done===2)crawlUp();else if(!g.done&&e.type==='pointerup'&&Date.now()-g.t<350)jumpPress();g=null};
+    if(dy>14){g.crawl=true;crawlDown()}};
+  const end=e=>{if(!g||e.pointerId!==g.id)return;if(g.crawl)crawlUp();g=null};
   st.addEventListener('pointerdown',down);st.addEventListener('pointermove',move);
   st.addEventListener('pointerup',end);st.addEventListener('pointercancel',end)})();
 
@@ -763,7 +760,7 @@ $('#ov-retry').onclick=()=>{S.diff=1;closePanel();beginRun()};
 $('#ov-menu').onclick=()=>toMenu();
 
 function beginRun(){closePanel();mode='play';newRun();hudOn(true);$('#h-prompt').style.opacity=1;scroll=0;
-  tip(touchDev?'Tap JUMP at a ❓ hurdle, CRAWL at a ❓ bar to open a question!':'Space = jump · ↓ = crawl · press at a ❓ obstacle to open a question!',7000);
+  tip(touchDev?'Tap the screen to jump · swipe down to crawl · do it at a ❓ obstacle to open a question!':'Space = jump · ↓ = crawl · press at a ❓ obstacle to open a question!',7000);
   R.state='cd';countdown(3,()=>{R.state='run'});Music.start()}
 function toMenu(){closePanel();$('#qcard').classList.remove('on');mode='menu';R=null;hudOn(false);$('#speak').classList.remove('on');setPrompt(null);refreshHUD();renderMenu();openPanel('p-menu')}
 $('#b-play').onclick=()=>{Snd.init();Say.init();
