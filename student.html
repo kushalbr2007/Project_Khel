@@ -237,12 +237,16 @@ const Music={timer:null,step:0,on:false,tempo:()=>96+(window.__streak||0)*10,
   MEL:[0,2,4,2,5,4,2,0,1,3,5,3,4,2,1,-1],SC:[261.6,293.7,329.6,392,440,523.3],
   start(){if(this.on)return;this.on=true;const tick=()=>{if(!this.on)return;if(!Snd.muted&&Snd.ctx){const i=this.MEL[this.step%16];if(i>=0)Snd.tone(this.SC[i],.22,'triangle',.035);if(this.step%4===0)Snd.tone(this.SC[0]/2,.3,'sine',.05)}this.step++;this.timer=setTimeout(tick,30000/this.tempo())};tick()},
   stop(){this.on=false;clearTimeout(this.timer)}};
-const Say={voice:null,pick(){const vs=speechSynthesis.getVoices();this.voice=vs.find(v=>/en[-_]IN/i.test(v.lang))||vs.find(v=>/en[-_]GB/i.test(v.lang))||vs.find(v=>/^en/i.test(v.lang))||null},
+const Say={voice:null,pick(){const vs=speechSynthesis.getVoices().filter(v=>/^en/i.test(v.lang));
+    const sc=v=>(/natural|neural|premium|enhanced|online/i.test(v.name)?60:0)+(/google/i.test(v.name)?35:0)+(/samantha|karen|daniel|moira|rishi|veena|aria|jenny|libby|ryan/i.test(v.name)?25:0)+(/en[-_]IN/i.test(v.lang)?12:/en[-_]GB/i.test(v.lang)?10:/en[-_]US/i.test(v.lang)?8:0)+(v.localService?0:3)-(/espeak|compact|novelty|bad|zarvox|whisper/i.test(v.name)?80:0);
+    this.voice=vs.sort((a,b)=>sc(b)-sc(a))[0]||null},
   init(){if(!('speechSynthesis'in window))return;this.pick();speechSynthesis.onvoiceschanged=()=>this.pick()},
-  say(t,rate=.8){if(!('speechSynthesis'in window)||Snd.muted||!t)return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.rate=rate;u.pitch=1.1;if(this.voice){u.voice=this.voice;u.lang=this.voice.lang}speechSynthesis.speak(u)}catch(e){}}};
+  say(t,rate=.72){if(!('speechSynthesis'in window)||Snd.muted||!t)return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.rate=rate;u.pitch=1.05;if(this.voice){u.voice=this.voice;u.lang=this.voice.lang}speechSynthesis.speak(u)}catch(e){}}};
 
 /* ================= Learning content: Level 1 ================= */
 const NAME={a:'ay',b:'bee',c:'see',d:'dee',e:'ee',f:'eff',g:'jee',h:'aitch',i:'eye',j:'jay',k:'kay',l:'el',m:'em',n:'en',o:'oh',p:'pee',q:'cue',r:'ar',s:'ess',t:'tee',u:'you',v:'vee',w:'double you',x:'ex',y:'why',z:'zed'};
+/* spoken forms: real English words that every phone voice pronounces correctly (the on-screen text keeps NAME) */
+const SAYW={a:'ay',b:'bee',c:'sea',d:'dee',e:'ee',f:'eff',g:'gee',h:'aitch',i:'eye',j:'jay',k:'kay',l:'ell',m:'em',n:'en',o:'oh',p:'pea',q:'queue',r:'are',s:'ess',t:'tea',u:'you',v:'vee',w:'double you',x:'ex',y:'why',z:'zed'};
 const STAGES=[null,'Letter Names · Uppercase','Letter Names · Lowercase'];
 function buildOptions(correct,n,fmt){
   const wrong=shuffle(ALPHA.filter(x=>x!==correct)).slice(0,n-1);
@@ -252,9 +256,9 @@ function buildOptions(correct,n,fmt){
 /* kind 'A' = hear the letter, choose it.  kind 'B' = see the letter, say it (teacher judges) */
 function makeQ(diff,L,kind){
   const f=diff===1?c=>c.toUpperCase():c=>c;
-  if(kind==='B')return{kind:'B',letter:L,display:f(L),say:NAME[L],text:'Say the name of this letter',options:[]};
+  if(kind==='B')return{kind:'B',letter:L,display:f(L),say:SAYW[L],text:'Say the name of this letter',options:[]};
   const n=diff===1?(Math.random()<.25?3:2):(Math.random()<.8?3:2);
-  return{kind:'A',letter:L,say:NAME[L],text:`Which ${diff===1?'capital':'small'} letter is “${NAME[L]}”?`,options:buildOptions(L,n,f)};
+  return{kind:'A',letter:L,say:SAYW[L],text:`Which ${diff===1?'capital':'small'} letter is “${NAME[L]}”?`,options:buildOptions(L,n,f)};
 }
 
 /* ================= Cosmetics ================= */
@@ -474,9 +478,8 @@ let R=null;               // current run
 const P={x:210,lift:0,vy:0,crawlT:0,held:false,jumpBuf:0,stumble:0,t:0,crawling:false};
 let T=0,scroll=0,shake=0,teacherSeen=0,endsAt=0,ended=false,linked=false;
 const isLinked=()=>linked&&Date.now()-teacherSeen<9000;
-const touchDev=('ontouchstart' in window)||navigator.maxTouchPoints>0;
+const touchDev=('ontouchstart' in window)||navigator.maxTouchPoints>0||matchMedia('(pointer:coarse)').matches||Math.min(screen.width,screen.height)<700;
 if(touchDev)document.body.classList.add('touch');
-if(!matchMedia('(pointer:coarse)').matches&&!touchDev)$('#touch').classList.remove('on');
 
 function openPanel(id){if(id!=='p-menu')$('#h-tip').classList.remove('on');$$('.panel').forEach(p=>p.classList.toggle('show',p.id===id));}
 function closePanel(){$$('.panel').forEach(p=>p.classList.remove('show'));}
@@ -665,7 +668,7 @@ function onWrong(q,x,y){
   R.streak=0;R.wrong++;R.wrongRow++;S.stats.wrong++;Snd.wrong();shake=.3;
   floatText(x,y-30,'Not quite!','#ffffff',32);
   queueRetry(q);                                                           // asked again after 3-5 other items
-  if(q.kind==='A')setTimeout(()=>Say.say(`It is ${NAME[q.letter]}.`),350);
+  if(q.kind==='A')setTimeout(()=>Say.say(`It is ${SAYW[q.letter]}.`),350);
   refreshHUD();sendStatus();
   if(R.wrong>=CONFIG.wrongTotal||R.wrongRow>=CONFIG.wrongInRow){R.state='failing';R.pendingLU=0;setTimeout(gameOver,900)}
 }
