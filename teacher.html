@@ -11,13 +11,13 @@ html,body{margin:0;background:#fff6e3;font-family:var(--font);color:var(--ink)}
 button{font-family:inherit;cursor:pointer}
 .t-in{font-family:inherit;font-size:20px;font-weight:800;width:110px;text-align:center;text-transform:uppercase;border:3px solid var(--ink);border-radius:12px;padding:4px}
 #teacher{max-width:1100px;margin:0 auto;padding:16px;font-family:var(--font)}
-#teacher h1{margin:0;font-size:28px}#teacher h2{margin:14px 0 6px;font-size:20px}
+#teacher h2{margin:14px 0 6px;font-size:20px}
 .t-head{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;background:#fff;border:3px solid var(--ink);border-radius:18px;padding:10px 16px}
 .t-code{font-size:32px;font-weight:900;letter-spacing:6px;background:var(--gold);border:3px solid var(--ink);border-radius:12px;padding:0 12px}
 .t-goal{margin-top:12px;background:#fff;border:3px solid var(--ink);border-radius:18px;padding:10px 16px}
 .t-bar{height:22px;border:3px solid var(--ink);border-radius:14px;overflow:hidden;background:#eee;margin-top:6px}
 .t-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--saffron),var(--gold));transition:width .5s}
-.t-cols{display:grid;grid-template-columns:minmax(260px,1fr) 2fr;gap:14px}
+.t-cols{display:grid;grid-template-columns:minmax(260px,1fr) 1fr;gap:14px;margin-top:12px}
 @media (max-width:760px){.t-cols{grid-template-columns:1fr}}
 .t-card{background:#fff;border:3px solid var(--ink);border-radius:16px;padding:10px 12px;margin-bottom:10px}
 .t-req{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap}
@@ -38,17 +38,14 @@ table.t-tb{width:100%;border-collapse:collapse;background:#fff}
 </style><script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head><body>
 <div id="teacher">
- <div class="t-head"><h1>Khel · Teacher</h1>
-  <span>Class code <span class="t-code" id="t-code">----</span> <button class="t-btn no" id="t-newcode" style="font-size:13px;padding:3px 10px">New code</button></span>
-  <label>Child ID <input class="t-in" id="t-id" maxlength="4" placeholder="J453" autocomplete="off"></label>
-  <button class="t-btn n" id="t-link">🔗 Link child</button><span id="t-msg" style="font-weight:700"></span></div>
- <p style="margin:6px 4px;font-size:14px">1. Tell the children the class code above; they type it on their start screen. 2. Ask each child for the 4-character ID on their screen, enter it below and press Link. Their say-it questions then appear here.</p>
- <div class="t-head"><span>Session <select id="t-min"><option value="5">5 min</option><option value="10" selected>10 min</option><option value="15">15 min</option><option value="20">20 min</option><option value="30">30 min</option><option value="0">No limit</option></select></span>
-  <button class="t-btn n" id="t-start">▶ Start session</button><button class="t-btn no" id="t-end">■ End now</button><span id="t-timer" style="font-weight:800"></span></div>
- <div class="t-goal"><b>Class goal</b> <span id="t-goaltxt"></span><div class="t-bar"><i id="t-goalfill"></i></div></div>
- <div class="t-cols"><div><h2>🎤 Say-it queue</h2><div id="t-queue"><p>No one is waiting.</p></div></div><div><h2>Linked children</h2><div id="t-players"><p>No children linked yet.</p></div></div></div>
+ <div class="t-head">
+  <span class="t-code" id="t-code">----</span><button class="t-btn no" id="t-newcode" style="font-size:16px;padding:3px 10px" aria-label="New code">↻</button>
+  <input class="t-in" id="t-id" maxlength="4" placeholder="ID" autocomplete="off"><button class="t-btn n" id="t-link">＋</button><span id="t-msg" style="font-weight:800"></span>
+  <span style="flex:1"></span>
+  <select id="t-min"><option value="5">5</option><option value="10" selected>10</option><option value="15">15</option><option value="20">20</option><option value="30">30</option><option value="0">∞</option></select>
+  <button class="t-btn n" id="t-start">▶</button><button class="t-btn no" id="t-end">■</button><span id="t-timer" style="font-weight:800"></span></div>
+ <div class="t-cols"><div><div id="t-queue"></div></div><div><div id="t-players"></div></div></div>
  <div id="t-sum"></div>
- <p style="font-size:13px;opacity:.7">Children connect with the class code above. On one device, the two pages talk through the browser. For separate devices, run the classroom server (khel-server.js).</p>
 </div>
 
 <script>
@@ -57,7 +54,7 @@ table.t-tb{width:100%;border-collapse:collapse;background:#fff}
 /* ================= CONFIG (tune in testing) ================= */
 const CONFIG={
   wrongTotal:5, wrongInRow:3, streakToLevelUp:5, retryMin:3, retryMax:5, speakChance:.35, speakOfflineAfter:7,
-  baseSpeed:240, speedPerStreak:15, goalPerChild:30, questionChance:.55
+  baseSpeed:240, speedPerStreak:15, goalPerChild:30, qSeconds:60, recSeconds:10, bookGap:[2,3]
 };
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const rnd=(a,b)=>a+Math.random()*(b-a), ri=n=>Math.floor(Math.random()*n), pick=a=>a[ri(a.length)];
@@ -132,36 +129,34 @@ const Teacher={players:{},queue:[],judged:new Set(),pendingAudio:{},qsig:'',ends
     Net.code=code;$('#t-code').textContent=code},
   newCode(){for(const id in this.players)Net.send({t:'unlink',to:id});this.players={};this.queue=[];this.qsig='';this.setCode(String(1000+ri(9000)));this.render()},
   link(){const inp=$('#t-id'),id=inp.value.trim().toUpperCase(),msg=$('#t-msg');
-    if(!/^[A-Z0-9]{4}$/.test(id)){msg.textContent='Enter the 4-character ID from the child’s screen.';return}
-    if(this.players[id]){msg.textContent=id+' is already linked.';return}
+    if(!/^[A-Z0-9]{4}$/.test(id)){msg.textContent='ID?';return}
+    if(this.players[id]){msg.textContent='✓';return}
     this.players[id]={id,name:'',linked:false,seen:0,correct:0,wrong:0,stars:0,best:0,letters:0,diff:1,streak:0,wrongTotal:0,miss:0,coins:0,cov:0};
-    Net.send({t:'link',to:id});inp.value='';msg.textContent='Linking '+id+'…';this.render()},
+    Net.send({t:'link',to:id});inp.value='';msg.textContent='⏳';this.render()},
   unlink(id){Net.send({t:'unlink',to:id});delete this.players[id];this.queue=this.queue.filter(q=>q.from!==id);this.render()},
   upd(id,m){const p=this.players[id];if(!p)return;for(const k of ['diff','streak','wrongTotal','miss','correct','wrong','stars','best','letters','coins','cov'])if(m[k]!=null)p[k]=m[k];p.seen=Date.now();this.render()},
   tick(){const e=$('#t-timer');if(this.endsAt){const l=Math.max(0,this.endsAt-Date.now());e.textContent=`⏱ ${Math.floor(l/60000)}:${String(Math.floor(l/1000)%60).padStart(2,'0')}`;if(l<=0&&this.running){this.running=false;this.summary()}}else e.textContent=this.running?'Running (no limit)':'';
     this.render()},
   verdict(q,ok){this.judged.add(q.qid);const send=()=>Net.send({t:'verdict',qid:q.qid,to:q.from,ok});send();setTimeout(send,1200);setTimeout(send,3500);this.queue=this.queue.filter(x=>x!==q);this.render()},
-  summary(){const ps=Object.values(this.players);if(!ps.length)return;$('#t-sum').innerHTML='<h2>Session summary</h2><table class="t-tb"><tr><th>Child ID</th><th>Name</th><th>Correct</th><th>To practise</th><th>Stars ⭐</th><th>Best streak</th><th>Letters</th><th>Difficulty</th></tr>'+ps.map(p=>`<tr><td>${esc(p.id)}</td><td>${esc(p.name)}</td><td>${p.correct}</td><td>${p.wrong}</td><td>${p.stars}</td><td>${p.best}</td><td>${p.letters}/26</td><td>${p.diff}</td></tr>`).join('')+'</table>'},
+  summary(){const ps=Object.values(this.players);if(!ps.length)return;$('#t-sum').innerHTML='<table class="t-tb"><tr><th>ID</th><th></th><th>✅</th><th>🔄</th><th>⭐</th><th>🔥</th><th>🔤</th><th></th></tr>'+ps.map(p=>`<tr><td>${esc(p.id)}</td><td>${esc(p.name)}</td><td>${p.correct}</td><td>${p.wrong}</td><td>${p.stars}</td><td>${p.best}</td><td>${p.letters}/26</td><td>${p.diff===1?'ABC':'abc'}</td></tr>`).join('')+'</table>'},
   render(){
     const ps=Object.values(this.players);
     const sig=this.queue.map(x=>x.qid+(x.audio?x.audio.aid:'-')+x.rec).join('|')+Object.keys(this.players).map(id=>(this.players[id].name||'')).join('');
-    const q=$('#t-queue');if(sig!==this.qsig){this.qsig=sig;q.innerHTML=this.queue.length?'':'<p>No one is waiting.</p>';
+    const q=$('#t-queue');if(sig!==this.qsig){this.qsig=sig;q.innerHTML='';
     this.queue.forEach(it=>{const p=this.players[it.from]||{name:''};const d=document.createElement('div');d.className='t-card t-req';
-      d.innerHTML=`<span class="w">${esc(it.text)}</span><span class="who"><span class="t-id">${esc(it.from)}</span> ${esc(p.name||'')}<br><small>${esc(it.note||'')}</small></span>`;
-      const ok=document.createElement('button');ok.className='t-btn ok';ok.textContent='✓ Correct';ok.onclick=()=>this.verdict(it,true);
-      const no=document.createElement('button');no.className='t-btn no';no.textContent='✗ Wrong';no.onclick=()=>this.verdict(it,false);const rc=document.createElement('div');rc.style.cssText='flex-basis:100%';
+      d.innerHTML=`<span class="w">${esc(it.text)}</span><span class="who"><span class="t-id">${esc(it.from)}</span> ${esc(p.name||'')}</span>`;
+      const ok=document.createElement('button');ok.className='t-btn ok';ok.textContent='✓';ok.onclick=()=>this.verdict(it,true);
+      const no=document.createElement('button');no.className='t-btn no';no.textContent='✗';no.onclick=()=>this.verdict(it,false);const rc=document.createElement('div');rc.style.cssText='flex-basis:100%';
       if(it.audio){const au=document.createElement('audio');au.controls=true;au.src=it.audio.data;au.preload='auto';rc.appendChild(au);
         if(it.fresh){it.fresh=false;au.play().catch(()=>{})}}                       // plays automatically when it arrives
-      else rc.innerHTML=it.rec?'<span class="t-note">⏳ Waiting for the child to record…</span>':'<span class="t-note">🔇 No recording on this device. Listen in person.</span>';
+      else rc.innerHTML=it.rec?'<span class="t-note">⏳</span>':'<span class="t-note">🔇 Listen in person</span>';
       d.append(rc,ok,no);q.appendChild(d)});}
     const typing=document.activeElement&&document.activeElement.classList.contains('t-name');
-    if(!typing){const pl=$('#t-players');pl.innerHTML=ps.length?'':'<p>No children linked yet.</p>';
+    if(!typing){const pl=$('#t-players');pl.innerHTML='';
       ps.forEach(p=>{const on=p.linked&&Date.now()-p.seen<8000;const d=document.createElement('div');d.className='t-card t-pl'+(on?'':' t-off');
-        d.innerHTML=`<span class="t-id">${esc(p.id)}</span>`;const inp=document.createElement('input');inp.className='t-name';inp.placeholder='Name label (optional)';inp.value=p.name||'';inp.oninput=()=>{p.name=inp.value};d.appendChild(inp);
-        const st=document.createElement('div');st.className='t-stats';st.innerHTML=`<span>${on?'🟢 online':p.linked?'⚪ offline':'⏳ waiting for child…'}</span><span>Diff ${p.diff} · ${p.diff===1?'Uppercase':'Lowercase'}</span><span>🔥 ${p.streak}/5</span><span>Wrong ${p.wrongTotal}/5</span><span>In a row ${p.miss}/3</span><span>✅ ${p.correct}</span><span>🔄 ${p.wrong}</span><span>⭐ ${p.stars}</span><span>Covered ${p.cov}/26</span>`;d.appendChild(st);
-        const un=document.createElement('button');un.className='t-btn no';un.style.cssText='grid-column:1/3;font-size:13px;padding:3px 10px;justify-self:start';un.textContent='Unlink';un.onclick=()=>this.unlink(p.id);d.appendChild(un);pl.appendChild(d)})}
-    const tot=ps.reduce((s,p)=>s+(p.correct||0),0),goal=Math.max(1,ps.length)*CONFIG.goalPerChild;
-    $('#t-goaltxt').textContent=`${tot} right answers together · goal ${goal}`;$('#t-goalfill').style.width=clamp(tot/goal*100,0,100)+'%'}
+        d.innerHTML=`<span class="t-id">${esc(p.id)}</span>`;const inp=document.createElement('input');inp.className='t-name';inp.placeholder='Name';inp.value=p.name||'';inp.oninput=()=>{p.name=inp.value};d.appendChild(inp);
+        const st=document.createElement('div');st.className='t-stats';st.innerHTML=`<span>${on?'🟢':p.linked?'⚪':'⏳'}</span><span>${p.diff===1?'ABC':'abc'}</span><span>🔥 ${p.streak}/5</span><span>✗ ${p.wrongTotal}/5</span><span>✗✗ ${p.miss}/3</span><span>✅ ${p.correct}</span>`;d.appendChild(st);
+        const un=document.createElement('button');un.className='t-btn no';un.style.cssText='grid-column:1/3;font-size:13px;padding:3px 10px;justify-self:start';un.textContent='✕';un.onclick=()=>this.unlink(p.id);d.appendChild(un);pl.appendChild(d)})}}
 };
 Teacher.init();
 
