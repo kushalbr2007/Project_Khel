@@ -54,7 +54,7 @@ table.t-tb{width:100%;border-collapse:collapse;background:#fff}
 /* ================= CONFIG (tune in testing) ================= */
 const CONFIG={
   wrongTotal:5, wrongInRow:3, streakToLevelUp:5, retryMin:3, retryMax:5, speakChance:.35, speakOfflineAfter:7,
-  baseSpeed:240, speedPerStreak:15, goalPerChild:30, qSeconds:60, recSeconds:10, bookGap:[2,3]
+  baseSpeed:240, speedPerStreak:15, goalPerChild:30, qSeconds:60, recSeconds:10, bookGap:[1,2]
 };
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const rnd=(a,b)=>a+Math.random()*(b-a), ri=n=>Math.floor(Math.random()*n), pick=a=>a[ri(a.length)];
@@ -103,17 +103,19 @@ const Net={code:'',id:uid(),ch:null,ws:null,seen:new Set(),h:{},
 Net.init();setInterval(()=>{if(Net.pcode!==Net.code)Net._p2pStart()},800);
 
 /* ================= Teacher companion view (#teacher) ================= */
-const Teacher={players:{},queue:[],judged:new Set(),pendingAudio:{},qsig:'',endsAt:0,running:false,
+const Teacher={players:{},queue:[],judged:new Set(),verd:{},pendingAudio:{},qsig:'',endsAt:0,running:false,
   init(){
     Net.id='teacher';this.setCode();
     Net.on('linked',m=>{const p=this.players[m.from];if(p){const first=!p.linked;p.linked=true;p.seen=Date.now();if(first&&this.running)Net.send({t:'session',to:m.from,endsAt:this.endsAt});this.render()}});
     Net.on('status',m=>{if(this.players[m.from])this.upd(m.from,m)});
     Net.on('bye',m=>{const p=this.players[m.from];if(p){p.linked=false;this.render()}});
-    Net.on('ask',m=>{if(!this.players[m.from]||this.judged.has(m.qid))return;this.upd(m.from,{linked:true});
+    Net.on('cancel',m=>{const n=this.queue.length;this.queue=this.queue.filter(q=>q.qid!==m.qid);delete this.pendingAudio[m.qid];if(n!==this.queue.length){this.qsig=null;this.render()}});
+    Net.on('ask',m=>{if(!this.players[m.from])return;if(this.judged.has(m.qid)){Net.send({t:'verdict',qid:m.qid,to:m.from,ok:this.verd[m.qid]});return}this.upd(m.from,{linked:true});
       let it=this.queue.find(q=>q.qid===m.qid);
       if(!it){it={qid:m.qid,from:m.from,text:m.text,note:m.note,diff:m.diff,rec:m.rec!==false,audio:this.pendingAudio[m.qid]||null};delete this.pendingAudio[m.qid];this.queue.push(it);this.render()}
       else if(it.rec!==(m.rec!==false)){it.rec=m.rec!==false;this.render()}});
     Net.on('audio',m=>{if(!this.players[m.from]||this.judged.has(m.qid))return;const it=this.queue.find(q=>q.qid===m.qid);
+      Net.send({t:'got',qid:m.qid,to:m.from});
       if(it){if(!it.audio||it.audio.aid!==m.aid){it.audio={aid:m.aid,mime:m.mime,data:m.data};it.fresh=true;this.render()}}
       else this.pendingAudio[m.qid]={aid:m.aid,mime:m.mime,data:m.data}});
     $('#t-newcode').onclick=()=>this.newCode();$('#t-link').onclick=()=>this.link();$('#t-id').onkeydown=e=>{if(e.key==='Enter')this.link()};
@@ -137,7 +139,7 @@ const Teacher={players:{},queue:[],judged:new Set(),pendingAudio:{},qsig:'',ends
   upd(id,m){const p=this.players[id];if(!p)return;for(const k of ['diff','streak','wrongTotal','miss','correct','wrong','stars','best','letters','coins','cov'])if(m[k]!=null)p[k]=m[k];p.seen=Date.now();this.render()},
   tick(){const e=$('#t-timer');if(this.endsAt){const l=Math.max(0,this.endsAt-Date.now());e.textContent=`⏱ ${Math.floor(l/60000)}:${String(Math.floor(l/1000)%60).padStart(2,'0')}`;if(l<=0&&this.running){this.running=false;this.summary()}}else e.textContent=this.running?'Running (no limit)':'';
     this.render()},
-  verdict(q,ok){this.judged.add(q.qid);const send=()=>Net.send({t:'verdict',qid:q.qid,to:q.from,ok});send();setTimeout(send,1200);setTimeout(send,3500);this.queue=this.queue.filter(x=>x!==q);this.render()},
+  verdict(q,ok){this.judged.add(q.qid);this.verd[q.qid]=ok;const send=()=>Net.send({t:'verdict',qid:q.qid,to:q.from,ok});send();setTimeout(send,1200);setTimeout(send,3500);this.queue=this.queue.filter(x=>x!==q);this.render()},
   summary(){const ps=Object.values(this.players);if(!ps.length)return;$('#t-sum').innerHTML='<table class="t-tb"><tr><th>ID</th><th></th><th>✅</th><th>🔄</th><th>⭐</th><th>🔥</th><th>🔤</th><th></th></tr>'+ps.map(p=>`<tr><td>${esc(p.id)}</td><td>${esc(p.name)}</td><td>${p.correct}</td><td>${p.wrong}</td><td>${p.stars}</td><td>${p.best}</td><td>${p.letters}/26</td><td>${p.diff===1?'ABC':'abc'}</td></tr>`).join('')+'</table>'},
   render(){
     const ps=Object.values(this.players);
@@ -147,7 +149,7 @@ const Teacher={players:{},queue:[],judged:new Set(),pendingAudio:{},qsig:'',ends
       d.innerHTML=`<span class="w">${esc(it.text)}</span><span class="who"><span class="t-id">${esc(it.from)}</span> ${esc(p.name||'')}</span>`;
       const ok=document.createElement('button');ok.className='t-btn ok';ok.textContent='✓';ok.onclick=()=>this.verdict(it,true);
       const no=document.createElement('button');no.className='t-btn no';no.textContent='✗';no.onclick=()=>this.verdict(it,false);const rc=document.createElement('div');rc.style.cssText='flex-basis:100%';
-      if(it.audio){const au=document.createElement('audio');au.controls=true;au.src=it.audio.data;au.preload='auto';rc.appendChild(au);
+      if(it.audio){const au=document.createElement('audio');au.controls=true;au.src=it.audio.data;au.preload='auto';au.onerror=()=>{const n=document.createElement('span');n.className='t-note';n.textContent='🔇 ⚠';rc.appendChild(n)};rc.appendChild(au);
         if(it.fresh){it.fresh=false;au.play().catch(()=>{})}}                       // plays automatically when it arrives
       else rc.innerHTML=it.rec?'<span class="t-note">⏳</span>':'<span class="t-note">🔇 Listen in person</span>';
       d.append(rc,ok,no);q.appendChild(d)});}

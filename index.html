@@ -28,6 +28,13 @@ button{font-family:inherit;cursor:pointer}
 #qtimer.on{opacity:1}
 #qtimer i{display:block;height:100%;background:var(--green);transform-origin:left;transition:background .3s}
 #qtimer.low i{background:var(--red)}
+#qnum{position:absolute;right:calc(var(--u)*20);top:calc(var(--u)*24);z-index:9;font-size:calc(var(--u)*64);font-weight:900;color:var(--red);-webkit-text-stroke:calc(var(--u)*3) #fff;paint-order:stroke fill;opacity:0;pointer-events:none}
+#qnum.on{opacity:1;animation:pulse 1s infinite}
+#fb .clk{display:none;position:absolute;font-size:calc(var(--u)*120);right:calc(50% - var(--u)*190);top:calc(50% - var(--u)*190);filter:drop-shadow(0 calc(var(--u)*6) 0 rgba(0,0,0,.3))}
+#fb.time .clk{display:block}
+.qopt.bad{animation:shk .5s}.qopt.good{animation:bnc .7s}
+@keyframes shk{20%,60%{transform:translateX(calc(var(--u)*-14))}40%,80%{transform:translateX(calc(var(--u)*14))}}
+@keyframes bnc{30%{transform:scale(1.14)}60%{transform:scale(.98)}100%{transform:scale(1.04)}}
 /* full-screen question cards */
 .qfull{position:absolute;inset:0;background:rgba(255,246,227,.95);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(var(--u)*18);opacity:0;pointer-events:none;transition:opacity .22s;z-index:7;padding:calc(var(--u)*30) calc(var(--u)*26) calc(var(--u)*24)}
 .qfull.on{opacity:1;pointer-events:auto}
@@ -59,7 +66,7 @@ button{font-family:inherit;cursor:pointer}
 /* right / wrong feedback */
 #fb{position:absolute;inset:0;z-index:20;pointer-events:none;opacity:0;display:flex;align-items:center;justify-content:center}
 #fb.ok{background:rgba(63,174,91,.55)}#fb.bad{background:rgba(229,56,59,.55)}
-#fb.on{animation:fbflash 1.3s}
+#fb.on{animation:fbflash 1.6s}
 @keyframes fbflash{0%{opacity:0}10%{opacity:1}80%{opacity:1}100%{opacity:0}}
 #fb svg{width:calc(var(--u)*300);height:calc(var(--u)*300);display:none;filter:drop-shadow(0 calc(var(--u)*10) calc(var(--u)*6) rgba(0,0,0,.3))}
 #fb.ok .tick,#fb.bad .cross{display:block;animation:fbpop .55s cubic-bezier(.2,1.5,.4,1)}
@@ -117,7 +124,7 @@ body.portrait .seg{width:calc(var(--u)*24)}
      <button class="ib" id="h-pause" aria-label="Pause">⏸</button>
    </div>
   </div>
-  <div id="qtimer"><i></i></div>
+  <div id="qtimer"><i></i></div><div id="qnum"></div>
   <div class="qfull" id="qcard"><button id="qc-replay" aria-label="Hear again">🔊</button><div id="qc-opts"></div></div>
   <div class="qfull" id="speak">
    <div id="sp-word"></div>
@@ -130,7 +137,7 @@ body.portrait .seg{width:calc(var(--u)*24)}
    <div id="sp-st"></div>
    <div id="sp-self"><button class="btn sm" id="sp-ok">✓ I said it</button></div>
   </div>
-  <div id="fb"><svg class="tick" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#2ea44f" stroke="#fff" stroke-width="6"/><path d="M26 52l16 16 32-36" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="cross" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#e5383b" stroke="#fff" stroke-width="6"/><path d="M32 32l36 36M68 32L32 68" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round"/></svg></div>
+  <div id="fb"><svg class="tick" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#2ea44f" stroke="#fff" stroke-width="6"/><path d="M26 52l16 16 32-36" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/></svg><svg class="cross" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="#e5383b" stroke="#fff" stroke-width="6"/><path d="M32 32l36 36M68 32L32 68" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round"/></svg><span class="clk">⏰</span></div>
   <div id="cd"></div>
   <div id="overlay">
    <div class="panel" id="p-menu">
@@ -154,7 +161,7 @@ body.portrait .seg{width:calc(var(--u)*24)}
 /* ================= CONFIG (tune in testing) ================= */
 const CONFIG={
   wrongTotal:5, wrongInRow:3, streakToLevelUp:5, retryMin:3, retryMax:5, speakChance:.35, speakOfflineAfter:7,
-  baseSpeed:240, speedPerStreak:15, goalPerChild:30, qSeconds:60, recSeconds:10, bookGap:[2,3]
+  baseSpeed:240, speedPerStreak:15, goalPerChild:30, qSeconds:60, recSeconds:10, bookGap:[1,2]
 };
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const rnd=(a,b)=>a+Math.random()*(b-a), ri=n=>Math.floor(Math.random()*n), pick=a=>a[ri(a.length)];
@@ -507,7 +514,7 @@ const PRESS_DIST=330;
 function nearestObs(){let b=null;for(const o of R.objs){if((o.k==='hurdle'||o.k==='bar'||o.k==='book')&&!o.hit&&!o.cleared&&o.x-P.x>-20&&(!b||o.x<b.x))b=o}return b}
 function qBook(){const o=nearestObs();if(!o)return null;const d=o.x-P.x;return(o.k==='book'&&o.q&&o.state==='ahead'&&d>40&&d<=PRESS_DIST)?o:null}
 function jumpPress(){if(mode!=='play'||!R||R.state!=='run')return;
-  if(P.lift<=1){const o=qBook();if(o){openCard(o);return}P.vy=840;P.lift=1;Snd.jump()}else P.jumpBuf=.15}
+  if(P.lift<=1){const o=qBook();if(o){openCard(o);return}P.vy=JUMP_V;P.lift=1;Snd.jump()}else P.jumpBuf=.3}
 function crawlDown(){if(mode==='play'&&R&&R.state==='run'){P.held=true;P.crawlT=Math.max(P.crawlT,.42);if(P.lift>1)P.vy=Math.min(P.vy,-300)}}
 function crawlUp(){P.held=false}
 addEventListener('keydown',e=>{
@@ -524,7 +531,7 @@ addEventListener('keyup',e=>{if(e.code==='ArrowDown'||e.code==='KeyS')crawlUp()}
   const dyOf=e=>e.clientY-g.y;
   st.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'||!ok(e.target)||mode!=='play'||!R||R.state!=='run')return;Snd.init();g={id:e.pointerId,x:e.clientX,y:e.clientY,t:Date.now(),done:0}});
   st.addEventListener('pointermove',e=>{if(!g||e.pointerId!==g.id||g.done)return;const dy=dyOf(e);
-    if(dy<-24){g.done=1;jumpPress()}else if(dy>24){g.done=2;crawlDown()}});
+    if(dy<-14){g.done=1;jumpPress()}else if(dy>16){g.done=2;crawlDown()}});
   const end=e=>{if(!g||e.pointerId!==g.id)return;if(g.done===2)crawlUp();else if(!g.done&&e.type==='pointerup'&&Date.now()-g.t<350)jumpPress();g=null};
   st.addEventListener('pointerup',end);st.addEventListener('pointercancel',end)})();
 
@@ -534,19 +541,19 @@ addEventListener('keyup',e=>{if(e.code==='ArrowDown'||e.code==='KeyS')crawlUp()}
 const Pool={covered:{1:new Set(),2:new Set()},retry:[],recent:[],kinds:[]};
 const aheadCount=()=>R?R.objs.filter(o=>o.q&&o.state==='ahead').length:0;
 const AUTO_DIST=150;   // a book opens its question by itself this close, so no question is skipped
-function resetPoolAttempt(){Pool.retry=[];Pool.recent=[];Pool.kinds=[]}
+function resetPoolAttempt(){Pool.retry=[];Pool.recent=[];Pool.kinds=[];Pool.bag=[]}
+function nextKind(){if(!Pool.bag||!Pool.bag.length)Pool.bag=shuffle(['A','B']);return Pool.bag.pop()}   // equal numbers of hear-and-choose (A) and say-it (B)
 function nextQuestion(){
   const d=S.diff;let L,kind;
   const due=Pool.retry.findIndex(r=>r.wait<=0);
-  if(due>=0){const r=Pool.retry.splice(due,1)[0];L=r.letter;kind=r.kind}
+  if(due>=0){const r=Pool.retry.splice(due,1)[0];L=r.letter;kind=nextKind()}
   else{
     const pend=new Set(Pool.retry.map(r=>r.letter));
     let c=ALPHA.filter(x=>!Pool.covered[d].has(x)&&!pend.has(x)&&!Pool.recent.includes(x));   // letters not covered yet come first
     if(!c.length)c=ALPHA.filter(x=>!pend.has(x)&&!Pool.recent.includes(x));                    // everything covered: letters repeat
     if(!c.length)c=ALPHA.slice();
     L=pick(c);
-    const k=Pool.kinds,twoB=k.length>=2&&k[k.length-1]==='B'&&k[k.length-2]==='B';
-    kind=(!twoB&&Math.random()<CONFIG.speakChance)?'B':'A';
+    kind=nextKind();
     Pool.retry.forEach(r=>r.wait--);                                                            // one more "other item" has been asked
   }
   Pool.covered[d].add(L);Pool.recent.push(L);if(Pool.recent.length>3)Pool.recent.shift();Pool.kinds.push(kind);
@@ -562,6 +569,7 @@ function queueRetry(q){
 /* the teacher chases the child: 1 mistake = closer, 3 in a row or 5 in total = caught */
 const chase=()=>R?Math.min(1,Math.max(R.wrongRow/CONFIG.wrongInRow,R.wrong/CONFIG.wrongTotal)):0;
 const GAP0=215,GAP1=44;
+const JUMP_V=950,JUMP_G=2300;      // a longer, higher, floatier jump (about 0.8 s in the air, 200 px high)
 
 function newRun(){
   const th=THEMES[S.diff-1];buildBG(th);resetPoolAttempt();
@@ -581,14 +589,14 @@ function spawnNext(){
   R.objs.push(o);
   const coinRow=(cx,n,y)=>{for(let i=0;i<n;i++)R.objs.push({k:'coin',x:cx+i*46,y,taken:false})};
   if(k==='bar')coinRow(x+8,3,28);else{coinRow(x-6,1,125);coinRow(x+24,1,150);coinRow(x+54,1,125)}
-  R.spawnX=x+w+rnd(360,460)+(k==='book'?80:0);
+  R.spawnX=x+w+rnd(520,660)+(k==='book'?90:0);
 }
 function updateTeacher(dt){
   const c=chase(),gap=c>=1?GAP1:GAP0-c*(GAP0-GAP1-6);
   R.tx+=((P.x-gap)-R.tx)*Math.min(1,dt*(c>=1?6:2.2));R.tph+=dt*(R.state==='failing'?.3:1);
   if(R.state==='failing'&&!R.caught&&P.x-R.tx<=GAP1+24){R.caught=true;P.stumble=2;shake=.5;Snd.thud();floatText(P.x+20,GY-160,'CAUGHT!','#ff4d4d',46);setTimeout(()=>{if(R&&R.state==='failing')gameOver()},1500)}
 }
-function qShow(on){$('#qtimer').classList.toggle('on',on);if(on){$('#qtimer i').style.transform='scaleX(1)';$('#qtimer').classList.remove('low')}}
+function qShow(on){if(!on)$('#qnum').classList.remove('on');$('#qtimer').classList.toggle('on',on);if(on){$('#qtimer i').style.transform='scaleX(1)';$('#qtimer').classList.remove('low')}}
 
 function updateRun(dt){
   P.t+=dt;
@@ -606,7 +614,7 @@ function updateRun(dt){
     if(live){while(R.spawnX<W+80)spawnNext()}
     R.decoT-=dx;if(R.decoT<=0){R.decoT=rnd(260,520);R.decos.push({k:pick(['lamp','bench','tree','tree']),x:W+60})}
     P.crawlT=Math.max(0,P.crawlT-dt);P.jumpBuf=Math.max(0,P.jumpBuf-dt);P.stumble=Math.max(0,P.stumble-dt);
-    if(P.lift>0){P.vy-=2700*dt;P.lift+=P.vy*dt;if(P.lift<=0){P.lift=0;P.vy=0;if(P.jumpBuf>0&&live){P.vy=840;P.lift=1;P.jumpBuf=0;Snd.jump()}}}
+    if(P.lift>0){P.vy-=JUMP_G*dt;P.lift+=P.vy*dt;if(P.lift<=0){P.lift=0;P.vy=0;if(P.jumpBuf>0&&live){P.vy=JUMP_V;P.lift=1;P.jumpBuf=0;Snd.jump()}}}
     P.crawling=P.lift<=1&&(P.held||P.crawlT>0);
     const tr=S.eq.trail;if(live&&tr!=='none'&&Math.random()<dt*40){const cols=tr==='rain'?['#e5383b','#ff9f1c','#ffd23f','#3fae5b','#2b6fdb']:['#ffd23f','#fff3b0','#ffffff'];
       parts.push({x:P.x-16,y:GY-P.lift-(P.crawling?20:40)+rnd(-18,18),vx:-R.v*.6,vy:rnd(-30,30),life:.6,max:1,col:pick(cols),size:rnd(5,9),kind:tr==='stars'?'star':'dot',rot:0,g:0})}
@@ -615,10 +623,10 @@ function updateRun(dt){
       for(const o of R.objs){
         if(o.k==='coin'){if(!o.taken){const cy=GY-o.y;if(Math.abs(o.x-P.x)<28&&cy>top-12&&cy<bot+12){o.taken=true;S.coins++;Snd.coin();burst(o.x,cy,5,['#ffc83d','#fff3b0'],160,'coin');refreshHUD()}}continue}
         const d=o.x-P.x,low=o.k!=='bar';
-        if(o.armed&&d<=(low?44:70)){o.armed=false;if(low){P.vy=840;P.lift=Math.max(P.lift,1);Snd.jump()}else P.crawlT=1.15}   // a correct answer clears the book by itself
+        if(o.armed&&d<=(low?72:80)){o.armed=false;if(low){P.vy=JUMP_V;P.lift=Math.max(P.lift,1);Snd.jump()}else P.crawlT=1.15}   // a correct answer clears the book by itself
         if(o.q&&o.state==='ahead'&&d<=AUTO_DIST&&d>-o.w){openCard(o);break}
         if(!o.hit&&!o.cleared){
-          const hx=P.x+16>o.x&&P.x-16<o.x+o.w;
+          const hx=P.x+10>o.x&&P.x-10<o.x+o.w;
           const oy1=o.k==='book'?GY-62:o.k==='hurdle'?GY-52:GY-136,oy2=low?GY:GY-70;
           if(hx&&bot>oy1&&top<oy2){o.hit=true;P.stumble=.7;shake=.25;Snd.thud();burst(P.x+10,GY-50,8,['#fff','#ffe28a'],200)}}
       }
@@ -628,20 +636,20 @@ function updateRun(dt){
   if(R.state==='run'||R.state==='failing'||R.state==='cd'||R.state==='celebrate')updateTeacher(dt);
   /* one minute per question */
   if(R.state==='ask'||(R.state==='speakwait'&&R.speak&&!R.speak.sent)){R.qt+=dt;const left=CONFIG.qSeconds-R.qt;
-    $('#qtimer i').style.transform='scaleX('+clamp(left/CONFIG.qSeconds,0,1)+')';$('#qtimer').classList.toggle('low',left<10);if(left<=0)timeUp()}
+    $('#qtimer i').style.transform='scaleX('+clamp(left/CONFIG.qSeconds,0,1)+')';$('#qtimer').classList.toggle('low',left<10);const qn=$('#qnum');qn.classList.toggle('on',left<=10);qn.textContent=Math.ceil(Math.max(0,left));if(left<=0)timeUp()}
   if(R.state==='speakwait'&&R.speak&&R.speak.sent){const s=R.speak;s.t+=dt;s.rs=(s.rs||0)+dt;
     if(s.rs>3){s.rs=0;submitSpeak()}
     if(s.t>CONFIG.speakOfflineAfter&&!isLinked()&&$('#sp-self').style.display!=='block'){$('#sp-st').textContent='No teacher linked';$('#sp-self').style.display='block'}}
   if(endsAt&&!ended){const left=endsAt-Date.now();$('#h-timer').style.display='flex';$('#h-tt').textContent=`${Math.max(0,Math.floor(left/60000))}:${String(Math.max(0,Math.floor(left/1000)%60)).padStart(2,'0')}`;if(left<=0)endSession()}
 }
 function timeUp(){
-  if(R.state==='ask')answerCard({correct:false},null);
-  else if(R.state==='speakwait'&&R.speak&&!R.speak.sent)finishSpeak(false,false)}
+  if(R.state==='ask')answerCard({correct:false,timeout:true},null);
+  else if(R.state==='speakwait'&&R.speak&&!R.speak.sent)finishSpeak(false,false,true)}
 
 /* ----- right / wrong feedback: big tick or cross, colour flash, repeated sound ----- */
-function verdictFx(ok){const f=$('#fb');f.className=ok?'ok':'bad';void f.offsetWidth;f.classList.add('on');
+function verdictFx(ok,why){const f=$('#fb');f.className=(ok?'ok':'bad')+(why==='time'?' time':'');void f.offsetWidth;f.classList.add('on');
   if(ok)Snd.right();else Snd.bad();try{navigator.vibrate&&navigator.vibrate(ok?[70]:[130,70,130])}catch(e){}
-  clearTimeout(verdictFx.t);verdictFx.t=setTimeout(()=>f.classList.remove('on'),1300)}
+  clearTimeout(verdictFx.t);verdictFx.t=setTimeout(()=>f.classList.remove('on'),1600)}
 
 /* ----- answers ----- */
 function noteLetter(q){if(q.letter)S.letters.add(q.letter)}
@@ -654,7 +662,7 @@ function onCorrect(q){
 function onWrong(q){
   R.streak=0;R.wrong++;R.wrongRow++;S.stats.wrong++;shake=.3;
   queueRetry(q);                                                           // asked again after 3-5 other items
-  setTimeout(()=>Say.say(SAYW[q.letter]),900);                              // after a miss, the child hears the right letter once
+  setTimeout(()=>Say.say(SAYW[q.letter]),1700);                              // after a miss, the child hears the right letter once
   refreshHUD();sendStatus();
   if(R.wrong>=CONFIG.wrongTotal||R.wrongRow>=CONFIG.wrongInRow){R.failing=true;R.pendingLU=0}   // the teacher catches the child
 }
@@ -675,8 +683,8 @@ function answerCard(op,btn){
   const c=R&&R.card;if(!c||c.locked||R.state!=='ask')return;c.locked=true;const o=c.o,q=o.q;
   $$('#qc-opts .qopt').forEach(x=>{if(x.dataset.k===q.letter)x.classList.add('good')});if(btn&&!op.correct)btn.classList.add('bad');
   R.state='result';o.state=op.correct?'cleared':'failed';
-  verdictFx(op.correct);if(op.correct)onCorrect(q);else onWrong(q);
-  setTimeout(()=>{$('#qcard').classList.remove('on');qShow(false);afterQuestion(op.correct,o)},1500);
+  verdictFx(op.correct,op.timeout?'time':'');if(op.correct)onCorrect(q);else onWrong(q);
+  setTimeout(()=>{$('#qcard').classList.remove('on');qShow(false);afterQuestion(op.correct,o)},op.correct?1900:3400);
 }
 /* ----- recording the child's voice: starts by itself, stops after 10 s, then Again / Done ----- */
 const Rec={stream:null,mr:null,chunks:[],ok:!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.MediaRecorder&&window.isSecureContext),state:'idle',timer:null,last:null,
@@ -685,6 +693,7 @@ const Rec={stream:null,mr:null,chunks:[],ok:!!(navigator.mediaDevices&&navigator
     if(!R||!R.speak)return;const sid=R.speak.id;
     if(!this.ok){recUI();return}
     this.state='starting';this.last=null;recUI();
+    if(this.stream&&this.stream.getAudioTracks().every(t=>t.readyState==='ended'))this.stream=null;   // phone browsers can end the mic when the page was in the background
     try{if(!this.stream)this.stream=await navigator.mediaDevices.getUserMedia({audio:true})}
     catch(e){this.ok=false;this.state='idle';recUI();return}
     if(!R||!R.speak||R.speak.id!==sid)return;
@@ -695,18 +704,19 @@ const Rec={stream:null,mr:null,chunks:[],ok:!!(navigator.mediaDevices&&navigator
     mr.start();this.mr=mr;this.state='rec';clearTimeout(this.timer);this.timer=setTimeout(()=>this.stop(),CONFIG.recSeconds*1000);recUI();Snd.pop()},
   stop(){clearTimeout(this.timer);if(this.mr&&this.mr.state!=='inactive')this.mr.stop()},
   finish(mime,sid){const blob=new Blob(this.chunks,{type:mime});const fr=new FileReader();
+    if(blob.size<600){if(R&&R.speak&&R.speak.id===sid){this.last=null;this.state='empty';recUI()}return}      // nothing was captured: ask to record again
     fr.onload=()=>{if(!R||!R.speak||R.speak.id!==sid)return;this.last={aid:Math.random().toString(36).slice(2,8),qid:sid,mime,data:fr.result};this.state='ready';recUI()};fr.readAsDataURL(blob)},
   abort(){clearTimeout(this.timer);const m=this.mr;this.mr=null;try{if(m&&m.state!=='inactive')m.stop()}catch(e){}this.state='idle';this.last=null},
   release(){this.abort();if(this.stream){this.stream.getTracks().forEach(t=>t.stop());this.stream=null}}};
-function sendAudio(){const a=Rec.last;if(a)Net.send({t:'audio',qid:a.qid,aid:a.aid,mime:a.mime,data:a.data})}
+function sendAudio(){const a=Rec.last;if(a&&!(R&&R.speak&&R.speak.got))Net.send({t:'audio',qid:a.qid,aid:a.aid,mime:a.mime,data:a.data})}
 function submitSpeak(){const sp=R&&R.speak;if(!sp)return;Net.send({t:'ask',qid:sp.id,text:sp.g.q.display,diff:S.diff,rec:Rec.ok&&!!Rec.last});sendAudio()}
 function recUI(){
   const sp=R&&R.speak;if(!sp)return;const st=Rec.state,show=(id,on)=>{$(id).style.display=on?'flex':'none'};
   if(sp.sent){show('#sp-ind',0);show('#sp-stop',0);show('#sp-again',0);show('#sp-submit',0);$('#sp-st').textContent='⏳';return}
-  const recording=st==='rec'||st==='starting';
+  const recording=st==='rec'||st==='starting';if(st==='empty')sp.bar=false;
   show('#sp-ind',recording);show('#sp-stop',st==='rec');
-  show('#sp-again',Rec.ok&&st==='ready');show('#sp-submit',st==='ready'||!Rec.ok);
-  $('#sp-st').textContent=!Rec.ok?'🔇':st==='starting'?'🎤…':'';
+  show('#sp-again',Rec.ok&&(st==='ready'||st==='empty'));show('#sp-submit',st==='ready'||!Rec.ok);
+  $('#sp-st').textContent=!Rec.ok?'🔇':st==='starting'?'🎤…':st==='empty'?'🎤 ?':'';
   if(st==='rec'&&!sp.bar){sp.bar=true;const b=$('#sp-bar i');b.style.transition='none';b.style.width='100%';void b.offsetWidth;b.style.transition='width '+CONFIG.recSeconds+'s linear';b.style.width='0%'}
   if(st!=='rec')sp.bar=false}
 $('#sp-stop').onclick=()=>{Snd.init();Rec.stop()};
@@ -720,14 +730,16 @@ function startSpeak(g){
   ['#sp-ind','#sp-stop','#sp-again','#sp-submit'].forEach(s=>$(s).style.display='none');
   qShow(true);$('#speak').classList.add('on');Rec.abort();recUI();Rec.start();
 }
-function finishSpeak(ok,practice){
-  if(!R||!R.speak)return;                                   // works even if the tab lost focus meanwhile
+function cancelSpeak(){if(R&&R.speak&&R.speak.sent)Net.send({t:'cancel',qid:R.speak.id})}
+function finishSpeak(ok,practice,timeout){
+  if(!R||!R.speak)return;if(!practice&&!R.speak.sent)cancelSpeak();                                   // works even if the tab lost focus meanwhile
   const g=R.speak.g;R.speak=null;R.card=null;Rec.abort();R.state='result';qShow(false);
-  g.state=ok?'cleared':'failed';verdictFx(ok);
+  g.state=ok?'cleared':'failed';verdictFx(ok,timeout?'time':'');
   if(ok){if(!practice)S.stats.stars++;onCorrect(g.q)}else{S.stats.speakNo++;onWrong(g.q)}
-  setTimeout(()=>{$('#speak').classList.remove('on');afterQuestion(ok,g)},1400);
+  setTimeout(()=>{$('#speak').classList.remove('on');afterQuestion(ok,g)},ok?1900:3400);
 }
-$('#sp-ok').onclick=()=>finishSpeak(true,true);
+$('#sp-ok').onclick=()=>{cancelSpeak();finishSpeak(true,true)};
+Net.on('got',m=>{if(R&&R.speak&&m.qid===R.speak.id)R.speak.got=true});
 Net.on('verdict',m=>{if(R&&R.speak&&m.qid===R.speak.id)finishSpeak(!!m.ok,false)});
 Net.on('link',m=>{const was=isLinked();linked=true;teacherSeen=Date.now();Net.send({t:'linked',to:m.from});sendStatus(m.from);if(!was){renderMenu();refreshHUD()}});
 Net.on('unlink',m=>{linked=false;renderMenu();refreshHUD()});
@@ -735,7 +747,7 @@ Net.on('session',m=>{teacherSeen=Date.now();endsAt=m.endsAt||0;ended=false});
 Net.on('end',m=>{if(mode!=='menu')endSession()});
 function sendStatus(to){Net.send({t:'status',to,diff:S.diff,streak:R?R.streak:0,wrongTotal:R?R.wrong:0,miss:R?R.wrongRow:0,
   correct:S.stats.correct,wrong:S.stats.wrong,stars:S.stats.stars,best:S.stats.best,letters:S.letters.size,coins:S.coins,cov:Pool.covered[S.diff].size})}
-function endSession(){if(ended)return;ended=true;sendStatus();if(R)R.state='ended';$('#speak').classList.remove('on');$('#qcard').classList.remove('on');qShow(false);Rec.release();
+function endSession(){if(ended)return;ended=true;cancelSpeak();sendStatus();if(R)R.state='ended';$('#speak').classList.remove('on');$('#qcard').classList.remove('on');qShow(false);Rec.release();
   const s=S.stats;$('#su-txt').innerHTML=`<p>✅ <b>${s.correct}</b> &nbsp; 🔄 <b>${s.wrong}</b> &nbsp; ⭐ <b>${s.stars}</b> &nbsp; 🔥 <b>${s.best}</b></p><p>🔤 <b>${S.letters.size}/26</b> &nbsp; 🪙 <b>${S.coins}</b></p>`;
   openPanel('p-summary')}
 $('#su-menu').onclick=()=>{endsAt=0;ended=false;toMenu()};
@@ -751,13 +763,13 @@ $('#lv-again').onclick=()=>{S.diff=1;S.d1done=false;S.levelDone=false;Pool.cover
 $('#lv-menu').onclick=()=>toMenu();
 
 /* ----- caught by the teacher = repeat the stage (5 wrong in total, or 3 wrong in a row) ----- */
-function gameOver(){if(!R||R.state==='over')return;R.state='over';Rec.release();openPanel('p-over')}
+function gameOver(){if(!R||R.state==='over')return;cancelSpeak();R.state='over';Rec.release();openPanel('p-over')}
 $('#ov-retry').onclick=()=>{S.diff=1;closePanel();beginRun()};
 $('#ov-menu').onclick=()=>toMenu();
 
 function beginRun(){closePanel();mode='play';newRun();hudOn(true);scroll=0;
   R.state='cd';countdown(3,()=>{if(R&&R.state==='cd')R.state='run'});Music.start()}
-function toMenu(){closePanel();$('#qcard').classList.remove('on');$('#speak').classList.remove('on');qShow(false);$('#fb').classList.remove('on');Rec.release();mode='menu';R=null;hudOn(false);refreshHUD();renderMenu();openPanel('p-menu')}
+function toMenu(){cancelSpeak();closePanel();$('#qcard').classList.remove('on');$('#speak').classList.remove('on');qShow(false);$('#fb').classList.remove('on');Rec.release();mode='menu';R=null;hudOn(false);refreshHUD();renderMenu();openPanel('p-menu')}
 $('#b-play').onclick=()=>{Snd.init();Say.init();Rec.prime();
   const cv=$('#in-code').value;if(cv&&cv.length!==4){$('#m-link').textContent='4️⃣';return}
   if(S.levelDone){S.diff=1;S.d1done=false;S.levelDone=false;Pool.covered={1:new Set(),2:new Set()}}
@@ -795,7 +807,7 @@ function drawRun(){
 }
 function drawMenuBG(){if(!BG.far)buildBG(THEMES[0]);drawBG(BG.th,T*60,T)}
 buildBG(THEMES[0]);fit();renderMenu();openPanel('p-menu');requestAnimationFrame(frame);
-window.__khel={S,Pool,Rec,answerCard,openCard,get R(){return R},P,CONFIG,Net,get mode(){return mode},beginRun,finishSpeak,doLevelUp,isLinked,nextQuestion,makeQ,chase};
+window.__khel={S,Pool,Rec,answerCard,openCard,get R(){return R},P,CONFIG,Net,get mode(){return mode},beginRun,finishSpeak,doLevelUp,isLinked,nextQuestion,makeQ,chase,toMenu};
 
 
 })();
